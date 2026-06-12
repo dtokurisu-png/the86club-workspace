@@ -263,3 +263,101 @@ html:not([data-theme="dark"]) .field select{background:#ffffff;border-color:#c8c
 @supports not selector(:has(*)) {
   .nav-group.active-group { border-color: var(--accent); }
 }
+
+/* V4.1 collapsible guided stages */
+.stage-page-intro {
+  margin-bottom: 16px;
+  background: linear-gradient(180deg, var(--panel), var(--panel-2));
+}
+.stage-page-intro h3 { font-size: 26px; margin: 8px 0; letter-spacing: -.02em; }
+.stage-list { display: grid; gap: 14px; }
+.stage-card {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.stage-head {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  text-align: left;
+  border: 0;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  color: var(--text);
+  padding: 18px;
+  cursor: pointer;
+}
+.stage-head:hover { background: var(--hover); }
+.stage-chevron {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--accent-strong);
+  background: var(--panel);
+  font-weight: 900;
+}
+.stage-title-block { display: grid; gap: 5px; min-width: 0; }
+.stage-title-block strong { font-size: 18px; letter-spacing: -.01em; }
+.stage-title-block small { color: var(--muted); line-height: 1.35; }
+.stage-progress-pill {
+  min-width: 86px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--accent-soft);
+  padding: 10px 12px;
+  color: var(--text);
+}
+.stage-progress-pill b { font-size: 22px; line-height: 1; }
+.stage-progress-pill small { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.stage-details {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-top: 1px solid var(--line);
+}
+.stage-card[data-collapsed="true"] .stage-details { display: none; }
+.stage-learning-card,
+.stage-info-box,
+.stage-progress-area,
+.stage-task-panel {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel-soft);
+  padding: 16px;
+}
+.stage-learning-card {
+  display: grid;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--accent-soft), var(--panel-soft));
+}
+.stage-learning-card h3,
+.stage-task-panel h3 { margin: 4px 0 0; }
+.stage-learning-card p,
+.stage-info-box p,
+.stage-note { margin: 0; }
+.stage-meta-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.stage-progress-area { display: grid; gap: 10px; }
+.stage-task-panel { display: grid; gap: 12px; }
+.stage-note {
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--muted);
+}
+.stage-task-list { display: grid; gap: 10px; }
+.stage-task-list .item { background: var(--panel); }
+@media (max-width: 760px) {
+  .stage-head { grid-template-columns: 34px 1fr; }
+  .stage-progress-pill { grid-column: 1 / -1; justify-self: stretch; }
+  .stage-meta-grid { grid-template-columns: 1fr; }
+}

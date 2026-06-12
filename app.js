@@ -22,7 +22,7 @@ const stageSeeds = [
     tasks: [
       ["Definir participantes y posiciones actuales", ["Crear perfil de cada persona", "Definir posición temporal", "Registrar si aporta capital, trabajo o ambos", "Registrar punto pendiente legal/contable"]],
       ["Crear perfil de Christopher", ["Definir correo de usuario", "Asignar rol principal", "Registrar fortalezas", "Registrar tareas que debe evitar"]],
-      ["Crear perfil del colega", ["Definir correo de usuario", "Asignar rol principal", "Registrar fortalezas", "Registrar tareas que debe evitar"]],
+      ["Crear perfil de Adrián", ["Definir correo de usuario", "Asignar rol principal", "Registrar fortalezas", "Registrar tareas que debe evitar"]],
       ["Definir flujo de trabajo", ["Idea", "Diseño inicial", "Retoque final", "Revisión", "Publicación", "Registro de decisión"]],
       ["Registrar primera decisión del equipo", ["Escribir decisión", "Explicar por qué", "Asignar impacto", "Guardar en Decision Log"]]
     ]
@@ -75,6 +75,57 @@ const stageSeeds = [
     ]
   }
 ];
+
+
+const STAGE_GUIDANCE = {
+  stage_01_roles: {
+    area: "Equipo / Dirección interna",
+    lesson: "Esta etapa enseña a separar responsabilidades antes de acelerar. Un equipo pequeño puede hacer muchas cosas, pero si nadie tiene un carril claro, el proyecto se vuelve impulso, cansancio y doble trabajo.",
+    why: "Ayuda a que Christopher y Adrián sepan qué decisiones les corresponden, qué deben revisar juntos y qué límites protegen la energía creativa y comercial del negocio.",
+    outcome: "Perfiles base, responsabilidades claras, flujo inicial de revisión y primeras decisiones del equipo."
+  },
+  stage_02_strategy: {
+    area: "Marca / Posicionamiento",
+    lesson: "Esta etapa enseña a convertir una marca bonita en una marca entendible. Antes de producir más piezas, el negocio necesita saber qué promete, a quién le habla y qué palabras no debe usar.",
+    why: "Una estrategia clara evita diseños desconectados, mensajes flojos y campañas que no explican por qué alguien debería comprar The 86 Club.",
+    outcome: "Lenguaje de marca, cliente inicial, producto base y dirección comercial para el Drop."
+  },
+  stage_03_shopify: {
+    area: "Tienda / Conversión",
+    lesson: "Esta etapa enseña a mirar Shopify como un vendedor silencioso. Cada imagen, botón, descripción y flujo móvil debe ayudar a que una persona entienda, confíe y compre.",
+    why: "Si la tienda no comunica valor rápido, el marketing trae visitas que se evaporan. Auditar evita gastar energía en promoción antes de arreglar puntos que frenan la compra.",
+    outcome: "Capturas, revisión por sección, problemas detectados y mejoras priorizadas para vender mejor."
+  },
+  stage_04_promotion: {
+    area: "Marketing / Divulgación",
+    lesson: "Esta etapa enseña a promover con intención. No se trata de publicar por ansiedad, sino de conectar producto, mensaje, canal y seguimiento.",
+    why: "Un negocio POD necesita visibilidad constante, pero también necesita evitar ruido. Esta etapa ayuda a publicar con propósito y medir qué canal merece atención.",
+    outcome: "Canales definidos, campaña inicial, responsables, mensajes y señales de rendimiento."
+  },
+  stage_05_numbers: {
+    area: "Finanzas / Decisión",
+    lesson: "Esta etapa enseña a tomar decisiones con números. Invertir, vender y gastar en ads debe verse junto para saber si el proyecto está avanzando o solo consumiendo recursos.",
+    why: "Sin datos financieros básicos, el negocio puede sentirse activo aunque esté desequilibrado. Esta etapa conecta inversión, ventas y participación estimada.",
+    outcome: "Aportes, ventas, ads, balance simple y señales para decidir qué ajustar."
+  }
+};
+
+function getStageGuide(stage) {
+  return STAGE_GUIDANCE[stage.id] || {
+    area: "Área de trabajo",
+    lesson: "Esta etapa ordena una parte del negocio para que el equipo aprenda, ejecute y revise con más claridad.",
+    why: "La etapa existe para evitar trabajo suelto: cada tarea debe conectar con una mejora real del negocio.",
+    outcome: "Tareas claras, progreso visible y próximos pasos mejor definidos."
+  };
+}
+
+function isStageCollapsed(stageId) {
+  return localStorage.getItem(`the86_stage_${stageId}`) !== "open";
+}
+
+function setStageCollapsed(stageId, collapsed) {
+  localStorage.setItem(`the86_stage_${stageId}`, collapsed ? "closed" : "open");
+}
 
 const viewTitles = {
   dashboard: "The 86 Club Workspace",
@@ -520,12 +571,93 @@ function renderDashboard() {
 function stageCard(s) { const p = stageProgress(s.id); return `<div class="item"><div class="item-head"><strong>${s.title}</strong><span class="badge">${p}%</span></div><p>${s.objective || ""}</p><div class="progress-track"><div class="progress-fill" style="width:${p}%"></div></div></div>`; }
 
 function renderStages() {
-  $("#stages").innerHTML = `<div class="toolbar"><button class="primary-btn" id="addStageBtn">Agregar etapa</button></div><div class="item-list">${cache.stages.map(s => {
+  const stagesHtml = cache.stages.map(s => {
     const tasks = cache.tasks.filter(t => t.stageId === s.id).sort((a,b)=>(a.order||0)-(b.order||0));
-    return `<div class="card"><div class="item-head"><div><h3>${s.title}</h3><p>${s.objective || ""}</p></div><span class="badge">${stageProgress(s.id)}%</span></div><div class="progress-track"><div class="progress-fill" style="width:${stageProgress(s.id)}%"></div></div><div class="modal-panel">${tasks.map(taskBlock).join("")}</div><button class="soft-btn" data-add-task="${s.id}">Agregar tarea</button></div>`;
-  }).join("")}</div>`;
+    const progress = stageProgress(s.id);
+    const guide = getStageGuide(s);
+    const collapsed = isStageCollapsed(s.id);
+    const statusLabel = s.status === "active" ? "Activa" : s.status === "planned" ? "Planificada" : (s.status || "Etapa");
+    return `
+      <article class="stage-card" data-stage-card="${s.id}" data-collapsed="${collapsed ? "true" : "false"}">
+        <button class="stage-head" type="button" data-stage-toggle="${s.id}" aria-expanded="${collapsed ? "false" : "true"}">
+          <span class="stage-chevron">${collapsed ? "▸" : "▾"}</span>
+          <span class="stage-title-block">
+            <span class="eyebrow">${statusLabel} · ${guide.area}</span>
+            <strong>${s.title}</strong>
+            <small>${s.objective || "Etapa de trabajo del proyecto."}</small>
+          </span>
+          <span class="stage-progress-pill">
+            <b>${progress}%</b>
+            <small>avance</small>
+          </span>
+        </button>
+
+        <div class="stage-details">
+          <div class="stage-learning-card">
+            <div>
+              <span class="eyebrow">Lectura guiada</span>
+              <h3>Qué estamos aprendiendo aquí</h3>
+            </div>
+            <p>${guide.lesson}</p>
+          </div>
+
+          <div class="stage-meta-grid">
+            <div class="stage-info-box">
+              <span class="eyebrow">Por qué importa</span>
+              <p>${guide.why}</p>
+            </div>
+            <div class="stage-info-box">
+              <span class="eyebrow">Resultado esperado</span>
+              <p>${guide.outcome}</p>
+            </div>
+          </div>
+
+          <div class="stage-progress-area">
+            <div class="item-head">
+              <strong>Progreso de esta etapa</strong>
+              <span class="badge">${progress}%</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div>
+          </div>
+
+          <div class="stage-task-panel">
+            <div class="item-head">
+              <div>
+                <span class="eyebrow">Tareas principales</span>
+                <h3>Ruta de ejecución</h3>
+              </div>
+              <button class="soft-btn" data-add-task="${s.id}" type="button">Agregar tarea</button>
+            </div>
+            <p class="stage-note">Por ahora estas tareas conservan sus checks actuales. En el siguiente bloque las convertiremos en acciones guiadas con modal de importancia y modal de datos reales.</p>
+            <div class="stage-task-list">${tasks.map(taskBlock).join("") || emptyState()}</div>
+          </div>
+        </div>
+      </article>`;
+  }).join("");
+
+  $("#stages").innerHTML = `
+    <div class="stage-page-intro card">
+      <span class="eyebrow">Mapa de ejecución</span>
+      <h3>Etapas guiadas de The 86 Club</h3>
+      <p>Esta página debe funcionar como ruta de aprendizaje y avance. Cada etapa se abre solo cuando necesitas trabajarla, muestra por qué existe y conecta tareas con crecimiento real del negocio.</p>
+      <div class="toolbar"><button class="primary-btn" id="addStageBtn">Agregar etapa</button></div>
+    </div>
+    <div class="stage-list">${stagesHtml}</div>`;
+
   $("#addStageBtn")?.addEventListener("click", addStage);
-  $$(`[data-add-task]`).forEach(b => b.addEventListener("click", () => addTask(b.dataset.addTask)));
+  $$(`[data-stage-toggle]`).forEach(btn => btn.addEventListener("click", () => {
+    const id = btn.dataset.stageToggle;
+    const card = document.querySelector(`[data-stage-card="${id}"]`);
+    const collapsed = card?.dataset.collapsed !== "true";
+    setStageCollapsed(id, collapsed);
+    if (card) {
+      card.dataset.collapsed = collapsed ? "true" : "false";
+      btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      const chev = card.querySelector(".stage-chevron");
+      if (chev) chev.textContent = collapsed ? "▸" : "▾";
+    }
+  }));
+  $$(`[data-add-task]`).forEach(b => b.addEventListener("click", (e) => { e.stopPropagation(); addTask(b.dataset.addTask); }));
   $$(`[data-task] input[type="checkbox"]`).forEach(cb => cb.addEventListener("change", onSubtaskToggle));
   $$(`[data-module]`).forEach(b => b.addEventListener("click", () => switchView(b.dataset.module)));
 }
