@@ -208,6 +208,101 @@ function weeklyCalendarSummary(profile, tasks) {
   };
 }
 
+const INTENSITY_WEIGHT = { low: 1, medium: 1.2, high: 1.5 };
+const DAY_CAPACITY_FACTOR = {
+  business_available: 1,
+  external_plus_business: 0.65,
+  external_only: 0.25,
+  light: 0.4,
+  protected: 0
+};
+
+function taskMinutes(task = {}) {
+  const raw = Number(task.estimatedMinutes);
+  return Number.isFinite(raw) && raw > 0 ? raw : 30;
+}
+
+function taskWeight(task = {}) {
+  return INTENSITY_WEIGHT[task.intensity || "medium"] || INTENSITY_WEIGHT.medium;
+}
+
+function weightedTaskMinutes(task = {}) {
+  return Math.round(taskMinutes(task) * taskWeight(task));
+}
+
+function dayCapacityMinutes(availability, dayKey) {
+  const av = normalizeAvailability(availability);
+  const day = av.days[dayKey] || {};
+  const baseHours = Number(day.customHours || av.maxDailyBusinessHours || 3);
+  const baseMinutes = Math.max(0, baseHours * 60);
+  const factor = DAY_CAPACITY_FACTOR[day.mode || "external_plus_business"] ?? 0.65;
+  return Math.round(baseMinutes * factor);
+}
+
+function workloadStatus(percent, mode, taskCount) {
+  if (mode === "protected" && taskCount > 0) {
+    return { key: "saturated", label: "Saturado", phrase: "Descanso invadido, conviene mover tareas." };
+  }
+  if (percent <= 45) return { key: "healthy", label: "Sano", phrase: "Carga sana." };
+  if (percent <= 70) return { key: "moderate", label: "Moderado", phrase: "Día cargado, pero manejable." };
+  if (percent <= 90) return { key: "high", label: "Alto", phrase: "Riesgo alto, revisa la distribución." };
+  return { key: "saturated", label: "Saturado", phrase: "Saturado, conviene mover tareas." };
+}
+
+function dayWorkload(profile, dayKey, tasks) {
+  const availability = normalizeAvailability(profile.availability);
+  const mode = availability.days[dayKey]?.mode || "external_plus_business";
+  const dayTasks = tasks.filter(t => t.assignedDay === dayKey);
+  const plannedMinutes = dayTasks.reduce((sum, task) => sum + taskMinutes(task), 0);
+  const weightedMinutes = dayTasks.reduce((sum, task) => sum + weightedTaskMinutes(task), 0);
+  const capacity = dayCapacityMinutes(profile.availability, dayKey);
+  let percent = capacity > 0 ? Math.round((weightedMinutes / capacity) * 100) : (weightedMinutes > 0 ? 100 : 0);
+  if (mode === "protected" && dayTasks.length > 0) percent = Math.max(percent, 100);
+  const status = workloadStatus(percent, mode, dayTasks.length);
+  return { mode, dayTasks, plannedMinutes, weightedMinutes, capacity, percent, status };
+}
+
+function weeklyWorkloadReport(profile, tasks) {
+  const days = WEEK_DAYS.map(day => ({ ...day, workload: dayWorkload(profile, day.key, tasks) }));
+  const totalPlanned = days.reduce((sum, day) => sum + day.workload.plannedMinutes, 0);
+  const totalWeighted = days.reduce((sum, day) => sum + day.workload.weightedMinutes, 0);
+  const workableDays = days.filter(day => day.workload.capacity > 0);
+  const average = workableDays.length ? Math.round(workableDays.reduce((sum, day) => sum + day.workload.percent, 0) / workableDays.length) : 0;
+  const saturatedDays = days.filter(day => day.workload.status.key === "saturated").length;
+  const protectedWithTasks = days.filter(day => day.workload.mode === "protected" && day.workload.dayTasks.length).length;
+  const highest = days.reduce((max, day) => day.workload.percent > max.workload.percent ? day : max, days[0]);
+  const recommendation = workloadRecommendation(days, average, saturatedDays, protectedWithTasks);
+  const moveSuggestion = workloadMoveSuggestion(days);
+  return { days, totalPlanned, totalWeighted, average, saturatedDays, protectedWithTasks, highest, recommendation, moveSuggestion };
+}
+
+function workloadRecommendation(days, average, saturatedDays, protectedWithTasks) {
+  if (protectedWithTasks > 0) return "Hay tareas en días protegidos. Considera moverlas para cuidar descanso real.";
+  if (saturatedDays > 0) {
+    const names = days.filter(d => d.workload.status.key === "saturated").map(d => d.label).join(", ");
+    return `Hay saturación en ${names}. Conviene mover o reducir tareas.`;
+  }
+  if (average > 70) return "La semana está cargada. Mantén foco y evita agregar tareas creativas extra.";
+  if (average > 45) return "Hay carga moderada. La semana parece manejable si respetas los bloques.";
+  return "La semana está equilibrada. Hay espacio para avanzar sin invadir descanso.";
+}
+
+function workloadMoveSuggestion(days) {
+  const heavy = [...days]
+    .filter(d => d.workload.dayTasks.length && d.workload.percent > 70)
+    .sort((a, b) => b.workload.percent - a.workload.percent)[0];
+  if (!heavy) return "";
+  const light = [...days]
+    .filter(d => d.key !== heavy.key && d.workload.mode !== "protected" && d.workload.percent < 45)
+    .sort((a, b) => a.workload.percent - b.workload.percent)[0];
+  if (!light) return "No hay un día liviano claro para mover tareas; considera reducir alcance.";
+  return `Podrías mover una tarea de ${heavy.label} a ${light.label}, que está más liviano.`;
+}
+
+function workloadPercentLabel(percent) {
+  return percent > 100 ? "100%+" : `${percent}%`;
+}
+
 
 const PROFILE_SEEDS = [
   {
@@ -313,6 +408,7 @@ function renderWeeklyCalendar(profile) {
   const availability = normalizeAvailability(profile.availability);
   const tasks = getProfileWeeklyTasks(profile.id);
   const summary = weeklyCalendarSummary(profile, tasks);
+  const workload = weeklyWorkloadReport(profile, tasks);
   const closeDayMode = availability.days[availability.weeklyCloseDay]?.mode;
   const closeWarning = closeDayMode === "protected"
     ? `<div class="calendar-warning">El cierre semanal cae en un día protegido. Puedes mantenerlo, pero sería mejor moverlo a un día ligero o disponible para revisar la semana sin invadir descanso.</div>`
@@ -323,26 +419,43 @@ function renderWeeklyCalendar(profile) {
         <span class="eyebrow">Calendario semanal</span>
         <h4>Semana de trabajo del perfil</h4>
       </div>
-      <button class="soft-btn" data-calendar-help="${profile.id}">Cómo leer este calendario</button>
+      <div class="calendar-actions">
+        <button class="soft-btn" data-workload-help="${profile.id}">Cómo se calcula la carga</button>
+        <button class="soft-btn" data-calendar-help="${profile.id}">Cómo leer este calendario</button>
+      </div>
     </div>
-    <div class="calendar-summary-strip">
+    <div class="calendar-summary-strip workload-summary-strip">
       <span><b>${summary.available}</b> disponibles</span>
       <span><b>${summary.light}</b> ligeros</span>
       <span><b>${summary.protectedDays}</b> protegidos</span>
-      <span><b>${summary.maxHours}</b> h/día máx.</span>
+      <span><b>${summary.maxHours}</b> h/día base</span>
       <span><b>${summary.taskCount}</b> tareas</span>
       <span><b>${summary.completed}</b> completadas</span>
     </div>
+    <div class="workload-overview workload-${workload.average > 90 ? "saturated" : workload.average > 70 ? "high" : workload.average > 45 ? "moderate" : "healthy"}">
+      <div><span class="eyebrow">Carga promedio semanal</span><strong>${workloadPercentLabel(workload.average)}</strong><small>${workload.recommendation}</small></div>
+      <div><span class="eyebrow">Día más cargado</span><strong>${workload.highest?.label || "Sin datos"}</strong><small>${workload.highest ? workloadPercentLabel(workload.highest.workload.percent) : "0%"} de carga</small></div>
+      <div><span class="eyebrow">Saturación</span><strong>${workload.saturatedDays}</strong><small>Días saturados</small></div>
+      <div><span class="eyebrow">Descanso invadido</span><strong>${workload.protectedWithTasks}</strong><small>Días protegidos con tareas</small></div>
+      <div><span class="eyebrow">Tiempo planificado</span><strong>${workload.totalPlanned} min</strong><small>${workload.totalWeighted} min ponderados</small></div>
+    </div>
+    ${workload.moveSuggestion ? `<div class="calendar-suggestion">${workload.moveSuggestion}</div>` : ""}
     ${closeWarning}
     <div class="week-board">
-      ${WEEK_DAYS.map(d => {
-        const mode = availability.days[d.key]?.mode || "external_plus_business";
-        const dayTasks = tasks.filter(t => t.assignedDay === d.key);
+      ${workload.days.map(d => {
+        const mode = d.workload.mode;
+        const dayTasks = d.workload.dayTasks;
         const isClose = availability.weeklyCloseDay === d.key;
-        return `<article class="week-day-card ${dayStateClass(mode)} ${isClose ? "is-close-day" : ""}">
+        return `<article class="week-day-card ${dayStateClass(mode)} ${isClose ? "is-close-day" : ""} workload-${d.workload.status.key}">
           <div class="week-day-head">
             <div><strong>${d.label}</strong>${isClose ? `<small class="close-day-tag">Cierre semanal</small>` : ""}</div>
             <span>${dayModeLabel(mode)}</span>
+          </div>
+          <div class="day-load-box">
+            <div class="day-load-top"><strong>${workloadPercentLabel(d.workload.percent)}</strong><span>${d.workload.status.label}</span></div>
+            <div class="load-bar"><i style="width:${Math.min(d.workload.percent, 100)}%"></i></div>
+            <small>${d.workload.plannedMinutes} min reales · ${d.workload.weightedMinutes} min ponderados · capacidad ${d.workload.capacity} min</small>
+            <p>${d.workload.status.phrase}</p>
           </div>
           <p class="day-planning-text">${dayPlanningText(mode)}</p>
           <div class="planned-task-zone">
@@ -365,7 +478,8 @@ function weeklyTaskHtml(task) {
     </div>
     ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ""}
     <div class="weekly-task-meta">
-      <span>${Number(task.estimatedMinutes || 0)} min</span>
+      <span>${taskMinutes(task)} min</span>
+      <span>${weightedTaskMinutes(task)} min ponderados</span>
       <span>Intensidad ${intensityLabel(task.intensity)}</span>
       <span>${task.source || "manual"}</span>
     </div>
@@ -1233,6 +1347,7 @@ function renderProfiles() {
   $$(`[data-edit-availability]`).forEach(btn => btn.addEventListener("click", () => editAvailability(btn.dataset.editAvailability)));
   $$(`[data-profile-info]`).forEach(btn => btn.addEventListener("click", () => openProfileImportance(btn.dataset.profileInfo)));
   $$(`[data-calendar-help]`).forEach(btn => btn.addEventListener("click", () => openCalendarHelp(btn.dataset.calendarHelp)));
+  $$(`[data-workload-help]`).forEach(btn => btn.addEventListener("click", () => openWorkloadHelp(btn.dataset.workloadHelp)));
   $$(`[data-add-weekly-task]`).forEach(btn => btn.addEventListener("click", () => {
     const [profileId, dayKey] = btn.dataset.addWeeklyTask.split(":");
     addWeeklyTask(profileId, dayKey);
@@ -1356,6 +1471,21 @@ function openCalendarHelp(id) {
       <div class="learning-box"><span class="eyebrow">Cómo leer los días</span><p>Disponible recibe tareas normales. Ligero recibe revisión, notas o planificación suave. Protegido debería quedar libre, salvo decisión manual. Trabajo externo reduce la capacidad recomendada.</p></div>
       <div class="learning-box"><span class="eyebrow">Cierre semanal</span><p>El día marcado como cierre será usado más adelante para revisar avance, impacto, carga y disponibilidad de la próxima semana.</p></div>
       <div class="learning-box"><span class="eyebrow">Tareas manuales</span><p>Sirven para probar el calendario antes de conectar roles. Luego el sistema generará tareas desde roles, duración, intensidad y objetivos.</p></div>
+    </div>`
+  });
+}
+
+function openWorkloadHelp(id) {
+  const profile = (cache.profiles || []).find(x => x.id === id);
+  openInfoModal({
+    eyebrow: "Carga diaria y saturación",
+    title: profile?.name ? `Cómo se calcula la carga de ${profile.name}` : "Cómo se calcula la carga",
+    html: `<div class="learning-stack">
+      <div class="learning-box"><span class="eyebrow">Qué mide</span><p>El sistema estima riesgo operativo. No mide cansancio real con precisión médica: compara tiempo, intensidad, tipo de día y disponibilidad para darte una brújula de trabajo.</p></div>
+      <div class="learning-box"><span class="eyebrow">Tiempo base</span><p>Usa el máximo diario recomendado del perfil. La base inicial es 3 horas porque The 86 Club aún convive con trabajo externo y descanso personal.</p></div>
+      <div class="learning-box"><span class="eyebrow">Tipo de día</span><p>Un día disponible usa capacidad completa. Trabajo externo reduce capacidad. Día ligero reduce más. Día protegido no debería recibir tareas automáticas y cualquier tarea ahí aumenta la alerta.</p></div>
+      <div class="learning-box"><span class="eyebrow">Intensidad</span><p>Baja pesa 1.0, media pesa 1.2 y alta pesa 1.5. Una hora intensa no cansa igual que una hora de revisión suave.</p></div>
+      <div class="learning-box"><span class="eyebrow">Lectura</span><p>Verde: sano. Amarillo: moderado. Naranja: alto. Rojo: saturado. Trabajar más no siempre significa avanzar mejor si se descuida descanso, marketing, ventas o análisis.</p></div>
     </div>`
   });
 }
