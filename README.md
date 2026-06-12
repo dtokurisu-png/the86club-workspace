@@ -1,1 +1,1 @@
-The 86 Club Workspace V4.9.8 - Real debug panel and version stamp.
+The 86 Club Workspace V5.0 - Sidebar rebuild limpio.

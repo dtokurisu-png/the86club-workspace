@@ -5,134 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>The 86 Club Workspace</title>
   <link rel="stylesheet" href="./styles.css" />
-
-  <style id="sidebar-hard-fix-v496">
-    /* V4.9.6 HARD SIDEBAR FIX: header fixed, nav owns all remaining height, items expand naturally */
-    html, body { min-height: 100%; }
-    .shell { height: 100dvh !important; max-height: 100dvh !important; overflow: hidden !important; }
-    .sidebar {
-      height: 100dvh !important;
-      max-height: 100dvh !important;
-      min-height: 0 !important;
-      overflow: hidden !important;
-      display: grid !important;
-      grid-template-rows: auto minmax(0, 1fr) !important;
-      gap: 14px !important;
-      align-content: stretch !important;
-    }
-    .sidebar-head {
-      grid-row: 1 !important;
-      min-height: 54px !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: space-between !important;
-      gap: 10px !important;
-      z-index: 20 !important;
-    }
-    .sidebar-nav-scroll {
-      grid-row: 2 !important;
-      min-height: 0 !important;
-      height: 100% !important;
-      max-height: 100% !important;
-      overflow-y: auto !important;
-      overflow-x: hidden !important;
-      scrollbar-width: none !important;
-      -ms-overflow-style: none !important;
-      overscroll-behavior: contain !important;
-      padding: 0 2px 34px 0 !important;
-    }
-    .sidebar-nav-scroll::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
-    .nav-categorized {
-      height: auto !important;
-      max-height: none !important;
-      min-height: 0 !important;
-      overflow: visible !important;
-      display: flex !important;
-      flex-direction: column !important;
-      gap: 12px !important;
-      padding-bottom: 48px !important;
-    }
-    .nav-group {
-      display: block !important;
-      flex: 0 0 auto !important;
-      height: auto !important;
-      min-height: 0 !important;
-      max-height: none !important;
-      overflow: visible !important;
-    }
-    .nav-group-toggle { width: 100% !important; }
-    .nav-group-items {
-      height: auto !important;
-      min-height: 0 !important;
-      max-height: none !important;
-      overflow: visible !important;
-    }
-    .nav-group[data-collapsed="true"] .nav-group-items { display: none !important; }
-    .nav-group:not([data-collapsed="true"]) .nav-group-items {
-      display: grid !important;
-      grid-template-columns: 1fr !important;
-      gap: 7px !important;
-      padding: 0 10px 13px 39px !important;
-    }
-    .nav-group .nav-btn {
-      width: 100% !important;
-      min-height: 40px !important;
-      height: auto !important;
-      white-space: normal !important;
-      overflow: visible !important;
-      overflow-wrap: anywhere !important;
-      flex: 0 0 auto !important;
-      pointer-events: auto !important;
-    }
-    .sidebar-footer { display: none !important; }
-    .settings-popover { z-index: 9999 !important; }
-    @media (max-width: 960px) {
-      .shell { height: auto !important; max-height: none !important; overflow: visible !important; }
-      .sidebar { height: 78dvh !important; max-height: 78dvh !important; }
-    }
-  </style>
 </head>
 <body>
-
-  <!-- V4.9.9 deploy proof debug: visible even if app.js fails -->
-  <div id="deployProof499" style="position:fixed;left:12px;top:12px;z-index:2147483647;background:#111;color:#f7d37a;border:2px solid #d4af37;border-radius:999px;padding:9px 12px;font:900 12px Arial,sans-serif;letter-spacing:.08em;box-shadow:0 10px 35px rgba(0,0,0,.45);">V4.9.9 CARGADA</div>
-  <button id="hardLog499" type="button" style="position:fixed;right:14px;bottom:14px;z-index:2147483647;background:#d4af37;color:#111;border:2px solid #111;border-radius:999px;padding:12px 14px;font:900 13px Arial,sans-serif;letter-spacing:.1em;box-shadow:0 12px 40px rgba(0,0,0,.45);cursor:pointer;">LOG HARD</button>
-  <section id="hardLogPanel499" style="display:none;position:fixed;right:14px;bottom:72px;width:min(760px,calc(100vw - 28px));height:min(620px,calc(100vh - 100px));z-index:2147483646;background:#0b0b0b;color:#f2eadc;border:2px solid #d4af37;border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.6);overflow:hidden;font-family:Arial,sans-serif;">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(212,175,55,.35);">
-      <strong style="color:#f7d37a;">THE86 HARD DEBUG · V4.9.9</strong>
-      <button id="hardLogClose499" type="button" style="background:#222;color:#fff;border:1px solid #555;border-radius:10px;padding:8px 10px;cursor:pointer;">Cerrar</button>
-    </div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;border-bottom:1px solid rgba(212,175,55,.2);">
-      <button id="hardDiag499" type="button" style="background:#1c1c1c;color:#f7d37a;border:1px solid #d4af37;border-radius:10px;padding:8px 10px;cursor:pointer;">Diagnóstico sidebar</button>
-      <button id="hardCopy499" type="button" style="background:#1c1c1c;color:#f7d37a;border:1px solid #d4af37;border-radius:10px;padding:8px 10px;cursor:pointer;">Copiar</button>
-    </div>
-    <pre id="hardOut499" style="height:calc(100% - 104px);margin:0;padding:12px;overflow:auto;white-space:pre-wrap;font:12px/1.45 Consolas,monospace;color:#ddd;">Panel hard debug listo. Dale a Diagnóstico sidebar.</pre>
-  </section>
-  <script>
-    (function(){
-      function rect(el){ if(!el) return null; var r=el.getBoundingClientRect(); return {x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height),top:Math.round(r.top),bottom:Math.round(r.bottom)}; }
-      function style(el){ if(!el) return null; var s=getComputedStyle(el); return {display:s.display,position:s.position,height:s.height,maxHeight:s.maxHeight,overflow:s.overflow,overflowY:s.overflowY,flex:s.flex,gridTemplateRows:s.gridTemplateRows}; }
-      function collect(){
-        var sidebar=document.querySelector('.sidebar');
-        var rail=document.querySelector('.sidebar-nav-scroll');
-        var nav=document.querySelector('.nav-categorized');
-        var groups=[].slice.call(document.querySelectorAll('.nav-group')).map(function(g){ var items=g.querySelector('.nav-group-items'); return {name:g.dataset.navGroup, collapsed:g.dataset.collapsed, rect:rect(g), style:style(g), itemsRect:rect(items), itemsStyle:style(items), buttons:items?[].slice.call(items.querySelectorAll('.nav-btn')).map(function(b){return {text:b.textContent.trim(), rect:rect(b)}}):[]}; });
-        return {version:'4.9.9-deploy-proof', time:new Date().toISOString(), url:location.href, viewport:{w:innerWidth,h:innerHeight}, body:{scrollHeight:document.body.scrollHeight,clientHeight:document.body.clientHeight}, sidebar:{rect:rect(sidebar), scrollHeight:sidebar&&sidebar.scrollHeight, clientHeight:sidebar&&sidebar.clientHeight, style:style(sidebar)}, rail:{rect:rect(rail), scrollTop:rail&&rail.scrollTop, scrollHeight:rail&&rail.scrollHeight, clientHeight:rail&&rail.clientHeight, canScroll:rail?rail.scrollHeight>rail.clientHeight:null, style:style(rail)}, nav:{rect:rect(nav), scrollHeight:nav&&nav.scrollHeight, clientHeight:nav&&nav.clientHeight, style:style(nav)}, groups:groups};
-      }
-      function show(obj){ document.getElementById('hardOut499').textContent=JSON.stringify(obj,null,2); }
-      window.addEventListener('DOMContentLoaded',function(){
-        var btn=document.getElementById('hardLog499'), panel=document.getElementById('hardLogPanel499'), close=document.getElementById('hardLogClose499'), diag=document.getElementById('hardDiag499'), copy=document.getElementById('hardCopy499');
-        btn.onclick=function(){ panel.style.display=panel.style.display==='none'?'block':'none'; };
-        close.onclick=function(){ panel.style.display='none'; };
-        diag.onclick=function(){ show(collect()); };
-        copy.onclick=function(){ var txt=document.getElementById('hardOut499').textContent; navigator.clipboard.writeText(txt).then(function(){ document.getElementById('hardOut499').textContent=txt+'\n\nCOPIADO'; }).catch(function(e){ document.getElementById('hardOut499').textContent=txt+'\n\nNO SE PUDO COPIAR: '+e.message; }); };
-      });
-    })();
-  </script>
-
   <div id="appShell" class="shell">
     <aside class="sidebar">
-      <div class="sidebar-head">
+      <div class="sidebar-header">
         <div class="brand-block">
           <div class="brand-mark">86</div>
           <div>
@@ -140,10 +17,10 @@
             <p>Workspace</p>
           </div>
         </div>
-        <div class="sidebar-settings-wrap">
-          <button id="settingsToggle" class="settings-menu-btn" type="button" aria-label="Abrir settings" aria-expanded="false">☰</button>
-          <div id="settingsMenu" class="settings-popover hidden">
-            <span class="settings-title">Settings</span>
+        <div class="sidebar-settings">
+          <button id="settingsToggle" class="settings-toggle" type="button" aria-label="Abrir settings" aria-expanded="false">☰</button>
+          <div id="settingsMenu" class="settings-menu hidden">
+            <span class="settings-kicker">Settings</span>
             <button id="themeToggle" class="ghost-btn" type="button">Modo día</button>
             <button class="ghost-btn" type="button" disabled>Exportar datos · futuro</button>
             <button class="ghost-btn" type="button" disabled>Administración workspace · futuro</button>
@@ -151,7 +28,7 @@
           </div>
         </div>
       </div>
-      <div class="sidebar-nav-scroll">
+      <div class="sidebar-scroll-container">
       <nav class="nav nav-categorized" aria-label="Workspace sections">
         <section class="nav-group" data-nav-group="direction">
           <button class="nav-group-toggle" type="button" aria-expanded="true" data-nav-group-toggle="direction">
@@ -295,139 +172,6 @@
     </div>
   </template>
 
-
-  <button id="debugToggle" class="debug-toggle" type="button" title="Abrir log de depuración">LOG</button>
-  <section id="debugPanel" class="debug-panel hidden" aria-label="Panel de depuración">
-    <header class="debug-panel-head">
-      <div>
-        <strong>Debug The 86 Club</strong>
-        <small>Úsalo para copiarme errores reales del navegador.</small>
-      </div>
-      <button id="debugClose" type="button">×</button>
-    </header>
-    <div class="debug-actions">
-      <button id="debugSidebar" type="button">Diagnóstico sidebar</button>
-      <button id="debugCopy" type="button">Copiar log</button>
-      <button id="debugDownload" type="button">Descargar JSON</button>
-      <button id="debugClear" type="button">Limpiar</button>
-    </div>
-    <pre id="debugOutput">Esperando eventos...</pre>
-  </section>
-
-  <script>
-    (function () {
-      const VERSION = '4.9.9-deploy-proof';
-      const logs = [];
-      function safeText(value) {
-        try { return typeof value === 'string' ? value : JSON.stringify(value, null, 2); }
-        catch (err) { return String(value); }
-      }
-      function push(level, message, data) {
-        const item = {
-          time: new Date().toISOString(),
-          level,
-          message: String(message || ''),
-          data: data === undefined ? null : data,
-          url: location.href,
-          viewport: { w: window.innerWidth, h: window.innerHeight }
-        };
-        logs.push(item);
-        if (logs.length > 250) logs.shift();
-        render();
-        return item;
-      }
-      function collectSidebar() {
-        const sidebar = document.querySelector('.sidebar');
-        const rail = document.querySelector('.sidebar-nav-scroll');
-        const nav = document.querySelector('.nav-categorized');
-        const groups = Array.from(document.querySelectorAll('.nav-group')).map((g) => {
-          const items = g.querySelector('.nav-group-items');
-          const toggle = g.querySelector('[data-nav-group-toggle]');
-          const cs = getComputedStyle(g);
-          const is = items ? getComputedStyle(items) : null;
-          return {
-            group: g.dataset.navGroup,
-            collapsed: g.dataset.collapsed,
-            expanded: toggle ? toggle.getAttribute('aria-expanded') : null,
-            groupRect: rect(g),
-            groupStyle: { display: cs.display, height: cs.height, maxHeight: cs.maxHeight, overflow: cs.overflow, flex: cs.flex },
-            itemsRect: items ? rect(items) : null,
-            itemsStyle: is ? { display: is.display, height: is.height, maxHeight: is.maxHeight, overflow: is.overflow, gridTemplateRows: is.gridTemplateRows } : null,
-            itemCount: items ? items.querySelectorAll('.nav-btn').length : 0
-          };
-        });
-        return {
-          version: VERSION,
-          body: { scrollHeight: document.body.scrollHeight, clientHeight: document.body.clientHeight },
-          sidebar: sidebar ? { rect: rect(sidebar), scrollHeight: sidebar.scrollHeight, clientHeight: sidebar.clientHeight, style: pickStyle(sidebar) } : null,
-          rail: rail ? { rect: rect(rail), scrollTop: rail.scrollTop, scrollHeight: rail.scrollHeight, clientHeight: rail.clientHeight, canScroll: rail.scrollHeight > rail.clientHeight, style: pickStyle(rail) } : null,
-          nav: nav ? { rect: rect(nav), scrollHeight: nav.scrollHeight, clientHeight: nav.clientHeight, style: pickStyle(nav) } : null,
-          groups
-        };
-      }
-      function rect(el) {
-        const r = el.getBoundingClientRect();
-        return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height), top: Math.round(r.top), bottom: Math.round(r.bottom) };
-      }
-      function pickStyle(el) {
-        const s = getComputedStyle(el);
-        return { display: s.display, height: s.height, maxHeight: s.maxHeight, overflow: s.overflow, overflowY: s.overflowY, gridTemplateRows: s.gridTemplateRows, position: s.position };
-      }
-      function render() {
-        const out = document.getElementById('debugOutput');
-        if (!out) return;
-        const latest = logs.slice(-40).map((l) => `[${l.time}] ${l.level.toUpperCase()} — ${l.message}${l.data ? '\n' + safeText(l.data) : ''}`).join('\n\n');
-        out.textContent = latest || 'Sin eventos todavía.';
-      }
-      function download() {
-        const payload = { version: VERSION, generatedAt: new Date().toISOString(), logs, sidebar: collectSidebar(), localStorage: { theme: localStorage.getItem('the86_theme'), view: localStorage.getItem('the86_view') } };
-        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'the86club-debug-log.json';
-        a.click();
-        URL.revokeObjectURL(a.href);
-      }
-      async function copyLog() {
-        const payload = JSON.stringify({ version: VERSION, generatedAt: new Date().toISOString(), logs, sidebar: collectSidebar() }, null, 2);
-        try { await navigator.clipboard.writeText(payload); push('info', 'Log copiado al portapapeles.'); }
-        catch (err) { push('error', 'No se pudo copiar el log.', { message: err.message }); }
-      }
-      window.T86Debug = {
-        version: VERSION,
-        logs,
-        log: (message, data) => push('info', message, data),
-        warn: (message, data) => push('warn', message, data),
-        error: (message, data) => push('error', message, data),
-        sidebar: () => push('info', 'Diagnóstico sidebar', collectSidebar()),
-        collectSidebar,
-        download,
-        copyLog
-      };
-      window.addEventListener('error', (event) => push('error', event.message || 'window.error', { filename: event.filename, lineno: event.lineno, colno: event.colno, stack: event.error && event.error.stack }));
-      window.addEventListener('unhandledrejection', (event) => push('error', 'unhandledrejection', { reason: event.reason && (event.reason.stack || event.reason.message || String(event.reason)) }));
-      document.addEventListener('DOMContentLoaded', () => {
-        const panel = document.getElementById('debugPanel');
-        const toggle = document.getElementById('debugToggle');
-        const close = document.getElementById('debugClose');
-        const sidebar = document.getElementById('debugSidebar');
-        const copy = document.getElementById('debugCopy');
-        const down = document.getElementById('debugDownload');
-        const clear = document.getElementById('debugClear');
-        if (toggle && panel) toggle.addEventListener('click', () => panel.classList.toggle('hidden'));
-        if (close && panel) close.addEventListener('click', () => panel.classList.add('hidden'));
-        if (sidebar) sidebar.addEventListener('click', () => window.T86Debug.sidebar());
-        if (copy) copy.addEventListener('click', copyLog);
-        if (down) down.addEventListener('click', download);
-        if (clear) clear.addEventListener('click', () => { logs.length = 0; render(); });
-        document.addEventListener('keydown', (event) => {
-          if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 'd') panel?.classList.toggle('hidden');
-        });
-        push('info', 'Debug listo', { version: VERSION });
-      });
-    })();
-  </script>
-
-  <script type="module" src="./app.js?v=499"></script>
+  <script type="module" src="./app.js?v=500"></script>
 </body>
 </html>
