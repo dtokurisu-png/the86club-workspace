@@ -5,6 +5,92 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>The 86 Club Workspace</title>
   <link rel="stylesheet" href="./styles.css" />
+
+  <style id="sidebar-hard-fix-v496">
+    /* V4.9.6 HARD SIDEBAR FIX: header fixed, nav owns all remaining height, items expand naturally */
+    html, body { min-height: 100%; }
+    .shell { height: 100dvh !important; max-height: 100dvh !important; overflow: hidden !important; }
+    .sidebar {
+      height: 100dvh !important;
+      max-height: 100dvh !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
+      display: grid !important;
+      grid-template-rows: auto minmax(0, 1fr) !important;
+      gap: 14px !important;
+      align-content: stretch !important;
+    }
+    .sidebar-head {
+      grid-row: 1 !important;
+      min-height: 54px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 10px !important;
+      z-index: 20 !important;
+    }
+    .sidebar-nav-scroll {
+      grid-row: 2 !important;
+      min-height: 0 !important;
+      height: 100% !important;
+      max-height: 100% !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+      overscroll-behavior: contain !important;
+      padding: 0 2px 34px 0 !important;
+    }
+    .sidebar-nav-scroll::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+    .nav-categorized {
+      height: auto !important;
+      max-height: none !important;
+      min-height: 0 !important;
+      overflow: visible !important;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 12px !important;
+      padding-bottom: 48px !important;
+    }
+    .nav-group {
+      display: block !important;
+      flex: 0 0 auto !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+    .nav-group-toggle { width: 100% !important; }
+    .nav-group-items {
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+    .nav-group[data-collapsed="true"] .nav-group-items { display: none !important; }
+    .nav-group:not([data-collapsed="true"]) .nav-group-items {
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      gap: 7px !important;
+      padding: 0 10px 13px 39px !important;
+    }
+    .nav-group .nav-btn {
+      width: 100% !important;
+      min-height: 40px !important;
+      height: auto !important;
+      white-space: normal !important;
+      overflow: visible !important;
+      overflow-wrap: anywhere !important;
+      flex: 0 0 auto !important;
+      pointer-events: auto !important;
+    }
+    .sidebar-footer { display: none !important; }
+    .settings-popover { z-index: 9999 !important; }
+    @media (max-width: 960px) {
+      .shell { height: auto !important; max-height: none !important; overflow: visible !important; }
+      .sidebar { height: 78dvh !important; max-height: 78dvh !important; }
+    }
+  </style>
 </head>
 <body>
   <div id="appShell" class="shell">
@@ -172,6 +258,6 @@
     </div>
   </template>
 
-  <script type="module" src="./app.js?v=495"></script>
+  <script type="module" src="./app.js?v=496"></script>
 </body>
 </html>
