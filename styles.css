@@ -1396,3 +1396,16 @@ html:not([data-theme="dark"]) .field select{background:#ffffff;border-color:#c8c
   .profile-bars-grid { grid-template-columns: 1fr; }
   .profile-line { grid-template-columns: 48px 1fr 56px; }
 }
+
+/* V4.7.4 profile card independence fix
+   Prevent one expanded profile from stretching the other profile card in the same grid row. */
+.profile-grid {
+  align-items: start;
+}
+.profile-card {
+  align-self: start;
+  align-content: start;
+}
+.profile-card > * {
+  min-width: 0;
+}

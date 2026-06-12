@@ -1,1 +1,1 @@
-The 86 Club Workspace V4.7.3 - compact profile panels.
+The 86 Club Workspace V4.7.4 - Independent profile cards fix
