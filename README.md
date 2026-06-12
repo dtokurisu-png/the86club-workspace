@@ -1,3 +1,3 @@
-# The 86 Club Workspace V4.2
+# The 86 Club Workspace V4.3
 
-V4.2 convierte las tareas de Etapas en acciones guiadas con botón de importancia, modal educativo, modal operativo y guardado de evidencia antes de marcar avance.
+Agrega página de perfiles base para Christopher y Adrián, con edición en modal y estructura preparada para roles, cargas y seguimiento semanal.

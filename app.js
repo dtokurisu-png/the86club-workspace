@@ -8,7 +8,7 @@ const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 let currentUser = null;
 let unsubscribers = [];
 let cache = {
-  stages: [], tasks: [], roles: [], products: [], audit: [], competitors: [], promotion: [], files: [], decisions: [], activity: [], settings: {},
+  stages: [], tasks: [], profiles: [], roles: [], products: [], audit: [], competitors: [], promotion: [], files: [], decisions: [], activity: [], settings: {},
   investments: [], equityPayments: [], salesEntries: [], adEntries: [], channelMetrics: []
 };
 
@@ -76,6 +76,28 @@ const stageSeeds = [
   }
 ];
 
+const PROFILE_SEEDS = [
+  {
+    id: "christopher",
+    name: "Christopher",
+    email: "",
+    avatarUrl: "",
+    primaryRole: "Pendiente",
+    subRoles: "",
+    weeklyLoadStatus: "Sin evaluar",
+    notes: "Perfil base para dirección y operación de The 86 Club. Completar con rol principal y límites de trabajo."
+  },
+  {
+    id: "adrian",
+    name: "Adrián",
+    email: "",
+    avatarUrl: "",
+    primaryRole: "Pendiente",
+    subRoles: "",
+    weeklyLoadStatus: "Sin evaluar",
+    notes: "Perfil base para definir responsabilidades, ritmo creativo y participación dentro del sistema."
+  }
+];
 
 const STAGE_GUIDANCE = {
   stage_01_roles: {
@@ -130,6 +152,7 @@ function setStageCollapsed(stageId, collapsed) {
 const viewTitles = {
   dashboard: "The 86 Club Workspace",
   stages: "Etapas de trabajo",
+  profiles: "Perfiles del equipo",
   roles: "Roles del equipo",
   products: "Productos y colecciones",
   audit: "Auditoría de tienda",
@@ -217,6 +240,13 @@ async function ensureWorkspaceSeed() {
       }
     }
   }
+  for (const profile of PROFILE_SEEDS) {
+    const pref = workspaceDoc("profiles", profile.id);
+    const psnap = await getDoc(pref);
+    if (!psnap.exists()) {
+      await setDoc(pref, { ...profile, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: currentUser.email });
+    }
+  }
 }
 
 function subscribeCol(name, opts = {}) {
@@ -234,6 +264,7 @@ function subscribeAll() {
   unsubscribers.push(rootUnsub);
   subscribeCol("stages", { order: "order" });
   subscribeCol("tasks", { order: "order" });
+  subscribeCol("profiles");
   subscribeCol("roles");
   subscribeCol("products");
   subscribeCol("audit");
@@ -296,11 +327,36 @@ initNavigation();
 
 
 const COLLECTION_LABELS = {
-  roles: "Rol", products: "Producto", audit: "Auditoría", competitors: "Competidor", promotion: "Campaña/canal", decisions: "Decisión",
+  profiles: "Perfil", roles: "Rol", products: "Producto", audit: "Auditoría", competitors: "Competidor", promotion: "Campaña/canal", decisions: "Decisión",
   files: "Recurso Drive", investments: "Inversión", equityPayments: "Abono / compensación", salesEntries: "Venta / dato", adEntries: "Gasto publicitario"
 };
 
+const ROLE_OPTIONS = [
+  "Pendiente",
+  "Dirección de marca",
+  "Dirección visual",
+  "Diseño conceptual",
+  "Producción gráfica / Photoshop",
+  "Shopify & experiencia web",
+  "Marketing orgánico",
+  "Contenido & comunidad",
+  "Campañas pagadas",
+  "Datos & análisis",
+  "Producto & colecciones",
+  "Operaciones & archivos",
+  "Finanzas & participación"
+];
+
 const FIELD_SCHEMAS = {
+  profiles: [
+    {name:"name", label:"Nombre del perfil", required:true, placeholder:"Christopher / Adrián"},
+    {name:"email", label:"Correo del usuario", type:"email", placeholder:"correo@the86club.com"},
+    {name:"avatarUrl", label:"Foto o avatar opcional", type:"url", placeholder:"Link de imagen en Drive o recurso público"},
+    {name:"primaryRole", label:"Rol principal", type:"select", required:true, options:ROLE_OPTIONS},
+    {name:"subRoles", label:"Subroles opcionales", type:"textarea", placeholder:"Escribe subroles separados por coma. Ejemplo: Dirección visual, Producto & colecciones"},
+    {name:"weeklyLoadStatus", label:"Estado de carga semanal", type:"select", options:["Sin evaluar","Verde — ritmo sano","Amarillo — atención","Rojo — exceso o desequilibrio"]},
+    {name:"notes", label:"Notas, límites y contexto del perfil", type:"textarea", placeholder:"Responsabilidades, límites, acuerdos o riesgos de saturación."}
+  ],
   roles: [
     {name:"title", label:"Título del rol", required:true, placeholder:"Dirección visual / Marketing / Editor"},
     {name:"owner", label:"Responsable", placeholder:"Christopher / Socio / Cuenta empresa"},
@@ -520,6 +576,7 @@ function renderAll() {
   if (!currentUser) return;
   renderDashboard();
   renderStages();
+  renderProfiles();
   renderGeneric("roles", "Rol", ["title", "owner", "status", "notes"]);
   renderGeneric("products", "Producto", ["name", "collection", "heroStatus", "status", "notes"]);
   renderGeneric("audit", "Auditoría", ["section", "score", "status", "notes"]);
@@ -879,6 +936,96 @@ async function addTask(stageId) {
       await addDoc(workspaceCol("tasks"), { ...data, stageId, order: cache.tasks.filter(t=>t.stageId===stageId).length + 1, subtasks: data.subtasks?.length ? data.subtasks : [{title:"Primer paso", done:false}], createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
       await logActivity("create_task", "stages", `Creó tarea: ${data.title}`);
     }
+  });
+}
+
+
+function profileStatusClass(status = "") {
+  const s = String(status).toLowerCase();
+  if (s.includes("rojo")) return "status-red";
+  if (s.includes("amarillo")) return "status-yellow";
+  if (s.includes("verde")) return "status-green";
+  return "status-neutral";
+}
+
+function renderProfiles() {
+  const container = $("#profiles");
+  if (!container) return;
+  const profiles = cache.profiles || [];
+  const list = profiles.length ? profiles.map(p => {
+    const avatar = p.avatarUrl
+      ? `<div class="profile-avatar image-avatar"><img src="${escapeAttr(p.avatarUrl)}" alt="Avatar de ${escapeAttr(p.name || "perfil")}" /></div>`
+      : `<div class="profile-avatar">${String(p.name || "?").trim().slice(0,1).toUpperCase()}</div>`;
+    return `<article class="profile-card">
+      <div class="profile-top">
+        ${avatar}
+        <div>
+          <span class="eyebrow">Perfil de equipo</span>
+          <h3>${p.name || "Perfil sin nombre"}</h3>
+          <p>${p.email || "Correo pendiente"}</p>
+        </div>
+        <span class="status-pill ${profileStatusClass(p.weeklyLoadStatus)}">${p.weeklyLoadStatus || "Sin evaluar"}</span>
+      </div>
+      <div class="profile-detail-grid">
+        <div><span>Rol principal</span><strong>${p.primaryRole || "Pendiente"}</strong></div>
+        <div><span>Subroles</span><strong>${p.subRoles || "Pendientes"}</strong></div>
+      </div>
+      <p class="profile-notes">${p.notes || "Sin notas todavía. Este espacio debe usarse para límites, responsabilidades y contexto de trabajo."}</p>
+      <div class="small-actions">
+        <button class="soft-btn" data-edit-profile="${p.id}">Editar perfil</button>
+        <button class="soft-btn" data-profile-info="${p.id}">¿Por qué importa?</button>
+      </div>
+    </article>`;
+  }).join("") : emptyState();
+
+  container.innerHTML = `
+    <div class="notice learning-notice"><strong>Perfiles no son contactos:</strong> son centros de responsabilidad. Aquí se define quién participa en The 86 Club, qué debe cuidar, qué rol principal sostiene y qué límites necesita para no desequilibrar el negocio.</div>
+    <div class="toolbar"><button class="primary-btn" id="addProfile">Agregar perfil</button></div>
+    <div class="profile-grid">${list}</div>`;
+
+  $("#addProfile")?.addEventListener("click", addProfile);
+  $$(`[data-edit-profile]`).forEach(btn => btn.addEventListener("click", () => editProfile(btn.dataset.editProfile)));
+  $$(`[data-profile-info]`).forEach(btn => btn.addEventListener("click", () => openProfileImportance(btn.dataset.profileInfo)));
+}
+
+async function addProfile() {
+  await openRecordModal({
+    title: "Agregar perfil de equipo",
+    collectionName: "Perfil",
+    schema: FIELD_SCHEMAS.profiles,
+    onSave: async (data) => {
+      await addDoc(workspaceCol("profiles"), { ...data, createdBy: currentUser.email, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      await logActivity("create_profile", "profiles", `Creó perfil de equipo: ${data.name}`);
+    }
+  });
+}
+
+async function editProfile(id) {
+  const profile = (cache.profiles || []).find(x => x.id === id);
+  if (!profile) return;
+  await openRecordModal({
+    title: `Editar perfil: ${profile.name || "equipo"}`,
+    collectionName: "Perfil",
+    schema: FIELD_SCHEMAS.profiles,
+    initial: profile,
+    onSave: async (data) => {
+      await updateDoc(workspaceDoc("profiles", id), { ...data, updatedAt: serverTimestamp() });
+      await logActivity("edit_profile", "profiles", `Actualizó perfil de equipo: ${data.name || profile.name}`);
+    }
+  });
+}
+
+function openProfileImportance(id) {
+  const profile = (cache.profiles || []).find(x => x.id === id);
+  openInfoModal({
+    eyebrow: "Importancia del perfil",
+    title: profile?.name ? `Perfil de ${profile.name}` : "Perfil de equipo",
+    html: `<div class="learning-stack">
+      <div class="learning-box"><span class="eyebrow">Para qué existe</span><p>El perfil convierte a una persona en una pieza visible del sistema. No solo guarda nombre y correo: define qué responsabilidad cuida, qué rol principal sostiene y qué carga semanal debe vigilarse.</p></div>
+      <div class="learning-box"><span class="eyebrow">Qué evita</span><p>Evita trabajo invisible, decisiones duplicadas, saturación creativa y confusión entre ayudar en muchas cosas y cargar con demasiadas cosas.</p></div>
+      <div class="learning-box"><span class="eyebrow">Cómo ayuda a vender</span><p>Cuando el equipo sabe quién cuida marca, producto, tienda, promoción y números, el negocio deja de depender de impulsos. El sistema podrá conectar tareas, actividad y resultados con cada persona.</p></div>
+      <div class="learning-box"><span class="eyebrow">Siguiente paso</span><p>En el próximo bloque conectaremos estos perfiles con un catálogo de roles predefinidos, con límites, sinergias y recomendaciones por rol.</p></div>
+    </div>`
   });
 }
 

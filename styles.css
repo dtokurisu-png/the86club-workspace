@@ -462,3 +462,91 @@ html:not([data-theme="dark"]) .field select{background:#ffffff;border-color:#c8c
   .subtask-actions { grid-column: 1 / -1; justify-content: stretch; }
   .subtask-actions button { flex: 1 1 140px; }
 }
+
+
+/* V4.3 team profiles */
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.profile-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 14px;
+}
+.profile-top {
+  display: grid;
+  grid-template-columns: 58px 1fr auto;
+  gap: 14px;
+  align-items: start;
+}
+.profile-top h3 { margin: 4px 0 2px; font-size: 24px; }
+.profile-top p { margin: 0; }
+.profile-avatar {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  display: grid;
+  place-items: center;
+  color: var(--accent-strong);
+  font-weight: 900;
+  font-size: 24px;
+  overflow: hidden;
+}
+.profile-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.status-pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: var(--panel-soft);
+  color: var(--muted);
+}
+.status-green { border-color: rgba(72, 160, 102, .45); color: #69c487; background: rgba(72, 160, 102, .12); }
+.status-yellow { border-color: rgba(197, 163, 92, .55); color: var(--accent-strong); background: var(--accent-soft); }
+.status-red { border-color: rgba(208, 113, 113, .55); color: var(--danger); background: rgba(208, 113, 113, .12); }
+.status-neutral { border-color: var(--line); color: var(--muted); }
+.profile-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.profile-detail-grid > div {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+  background: var(--panel-soft);
+  display: grid;
+  gap: 5px;
+}
+.profile-detail-grid span {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  font-weight: 800;
+}
+.profile-detail-grid strong { color: var(--text); line-height: 1.35; }
+.profile-notes {
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  border-radius: 16px;
+  padding: 12px;
+  margin: 0;
+}
+.learning-notice { margin-bottom: 14px; }
+@media (max-width: 880px) {
+  .profile-grid { grid-template-columns: 1fr; }
+  .profile-top { grid-template-columns: 52px 1fr; }
+  .profile-top .status-pill { grid-column: 1 / -1; width: fit-content; }
+  .profile-detail-grid { grid-template-columns: 1fr; }
+}
