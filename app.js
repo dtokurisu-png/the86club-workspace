@@ -6,10 +6,25 @@ const workspacePath = ["workspaces", WORKSPACE_ID];
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 let currentUser = null;
+let bootError = null;
 let unsubscribers = [];
+
+window.addEventListener("error", (event) => {
+  bootError = event.message || "Error desconocido";
+  console.error("The86 workspace error:", event.error || event.message);
+  const loginError = document.querySelector("#loginError");
+  if (loginError) loginError.textContent = `Error de carga: ${bootError}`;
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  bootError = event.reason?.message || String(event.reason || "Error desconocido");
+  console.error("The86 workspace promise error:", event.reason);
+  const loginError = document.querySelector("#loginError");
+  if (loginError) loginError.textContent = `Error de conexión/carga: ${bootError}`;
+});
 let cache = {
   stages: [], tasks: [], profiles: [], roles: [], products: [], audit: [], competitors: [], promotion: [], files: [], decisions: [], activity: [], settings: {},
-  investments: [], equityPayments: [], salesEntries: [], adEntries: [], channelMetrics: []
+  investments: [], equityPayments: [], salesEntries: [], adEntries: [], channelMetrics: [], profileWeeklyTasks: []
 };
 
 const stageSeeds = [
@@ -251,6 +266,115 @@ function dayStateClass(mode) {
   return "day-external";
 }
 
+
+function dayPlanningText(mode) {
+  const map = {
+    business_available: "Puede recibir tareas normales del negocio.",
+    external_plus_business: "Tiene trabajo externo: conviene asignar tareas cortas o bien definidas.",
+    external_only: "Día de trabajo externo: no debería recibir tareas automáticas.",
+    light: "Día ligero: ideal para revisión, notas o planificación suave.",
+    protected: "Día protegido: descanso real, salvo decisión manual."
+  };
+  return map[mode] || "Día sin lectura definida.";
+}
+
+function getProfileWeeklyTasks(profileId) {
+  return (cache.profileWeeklyTasks || [])
+    .filter(t => t.profileId === profileId)
+    .sort((a,b) => WEEK_DAYS.findIndex(d => d.key === a.assignedDay) - WEEK_DAYS.findIndex(d => d.key === b.assignedDay));
+}
+
+function intensityLabel(value = "medium") {
+  const map = { low: "Baja", medium: "Media", high: "Alta" };
+  return map[value] || value;
+}
+
+function taskStatusLabel(status = "pending") {
+  return status === "completed" ? "Completada" : "Pendiente";
+}
+
+function weeklyCalendarSummary(profile, tasks) {
+  const availability = normalizeAvailability(profile.availability);
+  const stats = availabilityStats(profile.availability);
+  const completed = tasks.filter(t => t.status === "completed").length;
+  return {
+    available: stats.available,
+    light: stats.light,
+    protectedDays: stats.protectedDays,
+    maxHours: stats.maxHours || 3,
+    closeDay: stats.closeDay,
+    taskCount: tasks.length,
+    completed
+  };
+}
+
+function renderWeeklyCalendar(profile) {
+  const availability = normalizeAvailability(profile.availability);
+  const tasks = getProfileWeeklyTasks(profile.id);
+  const summary = weeklyCalendarSummary(profile, tasks);
+  const closeDayMode = availability.days[availability.weeklyCloseDay]?.mode;
+  const closeWarning = closeDayMode === "protected"
+    ? `<div class="calendar-warning">El cierre semanal cae en un día protegido. Puedes mantenerlo, pero sería mejor moverlo a un día ligero o disponible para revisar la semana sin invadir descanso.</div>`
+    : "";
+  return `<section class="weekly-calendar">
+    <div class="calendar-topline">
+      <div>
+        <span class="eyebrow">Calendario semanal</span>
+        <h4>Semana de trabajo del perfil</h4>
+      </div>
+      <button class="soft-btn" data-calendar-help="${profile.id}">Cómo leer este calendario</button>
+    </div>
+    <div class="calendar-summary-strip">
+      <span><b>${summary.available}</b> disponibles</span>
+      <span><b>${summary.light}</b> ligeros</span>
+      <span><b>${summary.protectedDays}</b> protegidos</span>
+      <span><b>${summary.maxHours}</b> h/día máx.</span>
+      <span><b>${summary.taskCount}</b> tareas</span>
+      <span><b>${summary.completed}</b> completadas</span>
+    </div>
+    ${closeWarning}
+    <div class="week-board">
+      ${WEEK_DAYS.map(d => {
+        const mode = availability.days[d.key]?.mode || "external_plus_business";
+        const dayTasks = tasks.filter(t => t.assignedDay === d.key);
+        const isClose = availability.weeklyCloseDay === d.key;
+        return `<article class="week-day-card ${dayStateClass(mode)} ${isClose ? "is-close-day" : ""}">
+          <div class="week-day-head">
+            <div><strong>${d.label}</strong>${isClose ? `<small class="close-day-tag">Cierre semanal</small>` : ""}</div>
+            <span>${dayModeLabel(mode)}</span>
+          </div>
+          <p class="day-planning-text">${dayPlanningText(mode)}</p>
+          <div class="planned-task-zone">
+            <div class="zone-label">Tareas planificadas</div>
+            ${dayTasks.length ? dayTasks.map(task => weeklyTaskHtml(task)).join("") : `<div class="empty-day">Sin tareas asignadas todavía.</div>`}
+          </div>
+          <button class="tiny-btn" data-add-weekly-task="${profile.id}:${d.key}">Agregar tarea manual</button>
+        </article>`;
+      }).join("")}
+    </div>
+  </section>`;
+}
+
+function weeklyTaskHtml(task) {
+  const statusClass = task.status === "completed" ? "task-completed" : "task-pending";
+  return `<div class="weekly-task ${statusClass}">
+    <div class="weekly-task-head">
+      <strong>${escapeHtml(task.title || "Tarea sin título")}</strong>
+      <span>${taskStatusLabel(task.status)}</span>
+    </div>
+    ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ""}
+    <div class="weekly-task-meta">
+      <span>${Number(task.estimatedMinutes || 0)} min</span>
+      <span>Intensidad ${intensityLabel(task.intensity)}</span>
+      <span>${task.source || "manual"}</span>
+    </div>
+    <div class="small-actions compact-actions">
+      <button class="soft-btn" data-move-weekly-task="${task.id}">Mover</button>
+      <button class="soft-btn" data-toggle-weekly-task="${task.id}">${task.status === "completed" ? "Reabrir" : "Completar"}</button>
+    </div>
+  </div>`;
+}
+
 function setTheme(theme) {
   document.documentElement.dataset.theme = theme;
   localStorage.setItem("the86_theme", theme);
@@ -266,29 +390,40 @@ $("#loginForm").addEventListener("submit", async (e) => {
   try {
     await signInWithEmailAndPassword(auth, $("#loginEmail").value.trim(), $("#loginPassword").value);
   } catch (err) {
-    $("#loginError").textContent = "No se pudo iniciar sesión. Revisa correo, contraseña o permisos.";
+    console.error("Login error", err);
+    $("#loginError").textContent = `No se pudo iniciar sesión: ${err?.code || err?.message || "revisa correo, contraseña o dominio autorizado"}.`;
   }
 });
 
 $("#signOutBtn").addEventListener("click", () => signOut(auth));
 
 onAuthStateChanged(auth, async (user) => {
-  currentUser = user;
-  unsubscribers.forEach(fn => fn());
-  unsubscribers = [];
-  if (!user) {
-    $("#loginView").classList.remove("hidden");
-    $("#workspaceView").classList.add("hidden");
-    $("#signOutBtn").classList.add("hidden");
-    return;
+  try {
+    currentUser = user;
+    unsubscribers.forEach(fn => fn());
+    unsubscribers = [];
+    if (!user) {
+      $("#loginView").classList.remove("hidden");
+      $("#workspaceView").classList.add("hidden");
+      $("#signOutBtn").classList.add("hidden");
+      return;
+    }
+    $("#loginView").classList.add("hidden");
+    $("#workspaceView").classList.remove("hidden");
+    $("#signOutBtn").classList.remove("hidden");
+    $("#userChip").textContent = user.email;
+    await ensureWorkspaceSeed();
+    await logActivity("login", "auth", `Inició sesión: ${user.email}`);
+    subscribeAll();
+  } catch (err) {
+    console.error("Auth boot error", err);
+    $("#loginView").classList.add("hidden");
+    $("#workspaceView").classList.remove("hidden");
+    $("#signOutBtn").classList.remove("hidden");
+    $("#userChip").textContent = currentUser?.email || "Sesión detectada";
+    $("#dashboard").innerHTML = `<div class="card"><span class="eyebrow">Error de arranque</span><h3>No se pudo cargar el workspace completo</h3><p>${escapeHtml(err?.message || err)}</p><p class="muted">Copia este mensaje y envíamelo si vuelve a pasar. El login no debería quedar bloqueado.</p></div>`;
+    switchView("dashboard");
   }
-  $("#loginView").classList.add("hidden");
-  $("#workspaceView").classList.remove("hidden");
-  $("#signOutBtn").classList.remove("hidden");
-  $("#userChip").textContent = user.email;
-  await ensureWorkspaceSeed();
-  await logActivity("login", "auth", `Inició sesión: ${user.email}`);
-  subscribeAll();
 });
 
 async function ensureWorkspaceSeed() {
@@ -333,16 +468,21 @@ function subscribeCol(name, opts = {}) {
   const unsub = onSnapshot(q, (snap) => {
     cache[name] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderAll();
+  }, (err) => {
+    console.error(`Firestore subscription error in ${name}`, err);
+    const target = document.querySelector("#dashboard");
+    if (target) target.insertAdjacentHTML("afterbegin", `<div class="notice error-notice">No se pudo cargar ${name}: ${escapeHtml(err?.message || err)}</div>`);
   });
   unsubscribers.push(unsub);
 }
 
 function subscribeAll() {
-  const rootUnsub = onSnapshot(workspaceDoc(), (snap) => { cache.settings = snap.exists() ? snap.data() : {}; renderAll(); });
+  const rootUnsub = onSnapshot(workspaceDoc(), (snap) => { cache.settings = snap.exists() ? snap.data() : {}; renderAll(); }, (err) => console.error("Workspace root subscription error", err));
   unsubscribers.push(rootUnsub);
   subscribeCol("stages", { order: "order" });
   subscribeCol("tasks", { order: "order" });
   subscribeCol("profiles");
+  subscribeCol("profileWeeklyTasks");
   subscribeCol("roles");
   subscribeCol("products");
   subscribeCol("audit");
@@ -356,7 +496,7 @@ function subscribeAll() {
   subscribeCol("adEntries");
   subscribeCol("channelMetrics");
   const activityQ = query(workspaceCol("activityLog"), orderBy("createdAt", "desc"), limit(50));
-  const activityUnsub = onSnapshot(activityQ, snap => { cache.activity = snap.docs.map(d => ({id:d.id, ...d.data()})); renderAll(); });
+  const activityUnsub = onSnapshot(activityQ, snap => { cache.activity = snap.docs.map(d => ({id:d.id, ...d.data()})); renderAll(); }, (err) => console.error("Activity subscription error", err));
   unsubscribers.push(activityUnsub);
 }
 
@@ -647,6 +787,7 @@ function fieldInputHtml(f) {
   return `<label class="field">${labelBlock}<div class="field-input-box"><input name="${f.name}" type="${f.type || "text"}" ${placeholder} ${required}/></div></label>`;
 }
 function escapeAttr(v) { return String(v || "").replaceAll('"', '&quot;'); }
+function escapeHtml(v) { return String(v || "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch])); }
 function recordActions(view, id) { return `<div class="small-actions"><button class="soft-btn" data-edit-record="${view}:${id}">Editar</button></div>`; }
 
 
@@ -1066,6 +1207,7 @@ function renderProfiles() {
         </div>
         <div class="availability-days">${dayChips}</div>
       </div>
+      ${renderWeeklyCalendar(p)}
       <p class="profile-notes">${p.notes || "Sin notas todavía. Este espacio debe usarse para límites, responsabilidades y contexto de trabajo."}</p>
       <div class="small-actions">
         <button class="soft-btn" data-edit-profile="${p.id}">Editar perfil</button>
@@ -1089,6 +1231,13 @@ function renderProfiles() {
   $$(`[data-edit-profile]`).forEach(btn => btn.addEventListener("click", () => editProfile(btn.dataset.editProfile)));
   $$(`[data-edit-availability]`).forEach(btn => btn.addEventListener("click", () => editAvailability(btn.dataset.editAvailability)));
   $$(`[data-profile-info]`).forEach(btn => btn.addEventListener("click", () => openProfileImportance(btn.dataset.profileInfo)));
+  $$(`[data-calendar-help]`).forEach(btn => btn.addEventListener("click", () => openCalendarHelp(btn.dataset.calendarHelp)));
+  $$(`[data-add-weekly-task]`).forEach(btn => btn.addEventListener("click", () => {
+    const [profileId, dayKey] = btn.dataset.addWeeklyTask.split(":");
+    addWeeklyTask(profileId, dayKey);
+  }));
+  $$(`[data-move-weekly-task]`).forEach(btn => btn.addEventListener("click", () => moveWeeklyTask(btn.dataset.moveWeeklyTask)));
+  $$(`[data-toggle-weekly-task]`).forEach(btn => btn.addEventListener("click", () => toggleWeeklyTask(btn.dataset.toggleWeeklyTask)));
 }
 
 function dayLabel(key) {
@@ -1193,6 +1342,83 @@ async function editAvailability(id) {
     await logActivity("edit_availability", "profiles", `Actualizó disponibilidad semanal de ${profile.name || "perfil"}`);
     closeModal();
   });
+}
+
+
+function openCalendarHelp(id) {
+  const profile = (cache.profiles || []).find(x => x.id === id);
+  openInfoModal({
+    eyebrow: "Guía del calendario semanal",
+    title: profile?.name ? `Calendario de ${profile.name}` : "Calendario semanal",
+    html: `<div class="learning-stack">
+      <div class="learning-box"><span class="eyebrow">Para qué existe</span><p>Este calendario convierte disponibilidad en días reales de ejecución. Todavía no asigna roles automáticamente, pero ya prepara dónde caerán las tareas del negocio.</p></div>
+      <div class="learning-box"><span class="eyebrow">Cómo leer los días</span><p>Disponible recibe tareas normales. Ligero recibe revisión, notas o planificación suave. Protegido debería quedar libre, salvo decisión manual. Trabajo externo reduce la capacidad recomendada.</p></div>
+      <div class="learning-box"><span class="eyebrow">Cierre semanal</span><p>El día marcado como cierre será usado más adelante para revisar avance, impacto, carga y disponibilidad de la próxima semana.</p></div>
+      <div class="learning-box"><span class="eyebrow">Tareas manuales</span><p>Sirven para probar el calendario antes de conectar roles. Luego el sistema generará tareas desde roles, duración, intensidad y objetivos.</p></div>
+    </div>`
+  });
+}
+
+async function addWeeklyTask(profileId, dayKey) {
+  const profile = (cache.profiles || []).find(x => x.id === profileId);
+  if (!profile) return;
+  await openRecordModal({
+    title: `Agregar tarea manual — ${dayLabel(dayKey)}`,
+    collectionName: "Calendario semanal",
+    schema: [
+      { name: "title", label: "Título de la tarea", required: true },
+      { name: "description", label: "Descripción breve", type: "textarea" },
+      { name: "estimatedMinutes", label: "Duración estimada en minutos", type: "number" },
+      { name: "intensity", label: "Intensidad", type: "select", options: ["low", "medium", "high"] },
+      { name: "notes", label: "Notas", type: "textarea" }
+    ],
+    onSave: async (data) => {
+      const payload = {
+        profileId,
+        profileName: profile.name || "Perfil",
+        title: data.title,
+        description: data.description || "",
+        assignedDay: dayKey,
+        estimatedMinutes: Number(data.estimatedMinutes || 30),
+        intensity: data.intensity || "medium",
+        status: "pending",
+        notes: data.notes || "",
+        source: "manual",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        createdBy: currentUser.email,
+        updatedBy: currentUser.email
+      };
+      await addDoc(workspaceCol("profileWeeklyTasks"), payload);
+      await logActivity("create_weekly_task", "profiles", `Agregó tarea manual para ${profile.name || "perfil"}: ${data.title}`);
+    }
+  });
+}
+
+async function moveWeeklyTask(taskId) {
+  const task = (cache.profileWeeklyTasks || []).find(x => x.id === taskId);
+  if (!task) return;
+  const profile = (cache.profiles || []).find(x => x.id === task.profileId);
+  await openRecordModal({
+    title: `Mover tarea: ${task.title || "tarea"}`,
+    collectionName: "Calendario semanal",
+    schema: [
+      { name: "assignedDay", label: "Nuevo día", type: "select", options: WEEK_DAYS.map(d => d.key) }
+    ],
+    initial: { id: task.id, assignedDay: task.assignedDay },
+    onSave: async (data) => {
+      await updateDoc(workspaceDoc("profileWeeklyTasks", taskId), { assignedDay: data.assignedDay, updatedAt: serverTimestamp(), updatedBy: currentUser.email });
+      await logActivity("move_weekly_task", "profiles", `Movió tarea de ${profile?.name || "perfil"} a ${dayLabel(data.assignedDay)}: ${task.title}`);
+    }
+  });
+}
+
+async function toggleWeeklyTask(taskId) {
+  const task = (cache.profileWeeklyTasks || []).find(x => x.id === taskId);
+  if (!task) return;
+  const nextStatus = task.status === "completed" ? "pending" : "completed";
+  await updateDoc(workspaceDoc("profileWeeklyTasks", taskId), { status: nextStatus, updatedAt: serverTimestamp(), updatedBy: currentUser.email, completedAt: nextStatus === "completed" ? serverTimestamp() : null });
+  await logActivity(nextStatus === "completed" ? "complete_weekly_task" : "reopen_weekly_task", "profiles", `${nextStatus === "completed" ? "Completó" : "Reabrió"} tarea semanal: ${task.title}`);
 }
 
 function openProfileImportance(id) {
