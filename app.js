@@ -804,6 +804,7 @@ const viewTitles = {
   audit: "Auditoría de tienda",
   competitors: "Investigación de competidores",
   promotion: "Plan de promoción",
+  newProjects: "Nuevos proyectos",
   investments: "Inversiones y participación",
   commercial: "Ventas y datos comerciales",
   stats: "Estadísticas del negocio",
@@ -1195,6 +1196,113 @@ const STRATEGIC_DIRECTION_ROLE = {
     "Si hay muchos pendientes cerca del cierre, priorizar foco y reducción de alcance.",
     "Si hay días saturados, priorizar redistribución y protección de descanso.",
     "Si hay pocos datos, priorizar registro y lectura básica antes de tomar decisiones grandes."
+  ]
+};
+
+
+const BRAND_DIRECTION_ROLE = {
+  id: "role_brand_direction",
+  title: "Dirección de marca",
+  name: "Dirección de marca",
+  area: "Marca / Identidad",
+  status: "catalog",
+  locked: true,
+  maturity: "1.5.2",
+  shortDescription: "Protege la promesa, el tono, la identidad y la coherencia de The 86 Club para que no se vuelva una tienda POD genérica.",
+  purpose: "Mantener The 86 Club reconocible, coherente y creíble como marca de ropa inspirada en la cultura profesional de cocina y servicio. Este rol protege la promesa de marca, el tono, el mensaje, la identidad verbal, la percepción premium y la conexión con el público.",
+  whyItMatters: "The 86 Club no vende solo camisetas. Vende pertenencia, estándar, servicio, rush, disciplina y cultura profesional de cocina. Si cada diseño, texto, email, página o campaña habla un idioma distinto, la marca se diluye y se convierte en otra tienda más de camisetas POD.",
+  coreResponsibility: "Proteger la promesa central de The 86 Club y revisar si cada pieza se siente realmente como parte de la marca.",
+  healthRule: "Este rol debe revisar para decidir, no revisar para atrasar. La dirección de marca puede volverse perfeccionista si no se controla, por eso debe proteger claridad sin crear semanas infinitas de revisión.",
+  focusRule: "Las tareas de Dirección de marca deben agruparse en un bloque de marca cuando sea posible: mensaje, coherencia, tono y promesa se revisan juntos para evitar cambios dispersos durante toda la semana.",
+  taskEcosystemNote: "Más adelante cada tarea de Dirección de marca tendrá su propio ecosistema: ventana grande con checklist de coherencia, preguntas de marca, evidencia, reglas de tono, impacto esperado y cierre guiado.",
+  responsibilities: [
+    "Definir y proteger la voz de marca.",
+    "Revisar que productos, textos y campañas mantengan coherencia.",
+    "Cuidar que la marca no se vuelva genérica ni parezca una tienda POD cualquiera.",
+    "Evaluar si una idea fortalece o debilita la percepción de The 86 Club.",
+    "Mantener alineados Shopify, Instagram, emails, mockups, productos y promociones.",
+    "Definir qué palabras, frases, tonos y promesas pertenecen a la marca.",
+    "Convertir cultura de cocina en identidad comercial clara."
+  ],
+  avoid: [
+    "Aprobar diseños solo porque se ven bonitos.",
+    "Cambiar el tono de marca cada semana.",
+    "Perseguir tendencias que no encajan con cocina, servicio o estándar profesional.",
+    "Prometer más de lo que el producto o la tienda pueden cumplir.",
+    "Confundir branding con decoración visual.",
+    "Convertir cada publicación en venta agresiva.",
+    "Bloquear producción por perfeccionismo."
+  ],
+  weeklyTasks: [
+    { title: "Revisar coherencia de marca semanal", duration: 45, intensity: "media", frequency: "1 vez por semana", suggestedMoment: "Bloque de marca", priority: "alta", businessImpact: "Detecta si productos, textos y campañas siguen sonando a The 86 Club." },
+    { title: "Definir mensaje central de la semana", duration: 30, intensity: "media", frequency: "1 vez por semana", suggestedMoment: "Inicio de semana o antes de promoción", priority: "alta", businessImpact: "Evita publicar piezas sueltas sin un mensaje común." },
+    { title: "Revisar tono de textos clave", duration: 40, intensity: "media", frequency: "Según necesidad", suggestedMoment: "Antes de publicar", priority: "media", businessImpact: "Alinea descripciones, emails, captions y banners con la voz de marca." },
+    { title: "Validar si un diseño pertenece a la marca", duration: 30, intensity: "media", frequency: "Por diseño/candidato", suggestedMoment: "Antes de producir o publicar", priority: "alta", businessImpact: "Evita convertir ideas bonitas en productos que diluyen la identidad." },
+    { title: "Revisar promesa del producto", duration: 30, intensity: "media", frequency: "Por producto/drop", suggestedMoment: "Antes de activar producto", priority: "alta", businessImpact: "Conecta el producto con valor, cultura y razón de compra." },
+    { title: "Actualizar notas de voz de marca", duration: 25, intensity: "baja/media", frequency: "Cuando haya aprendizajes", suggestedMoment: "Cierre o pre-cierre", priority: "media", businessImpact: "Convierte aprendizajes en reglas reutilizables." },
+    { title: "Detectar piezas que diluyen la marca", duration: 30, intensity: "media", frequency: "1 vez por semana o por revisión", suggestedMoment: "Bloque de marca", priority: "alta", businessImpact: "Señala piezas que se sienten genéricas, contradictorias o fuera de cultura." },
+    { title: "Crear regla de marca nueva", duration: 20, intensity: "baja", frequency: "Cuando se tome una decisión", suggestedMoment: "Después de revisar", priority: "media", businessImpact: "Deja claro qué sí y qué no pertenece a The 86 Club." },
+    { title: "Revisar confianza de página/producto", duration: 45, intensity: "media", frequency: "Cuando haya cambios en Shopify", suggestedMoment: "Antes de promoción", priority: "alta", businessImpact: "Asegura que la tienda se sienta confiable, coherente y no improvisada." },
+    { title: "Preparar guía de mensaje para campaña", duration: 45, intensity: "media", frequency: "Antes de campaña", suggestedMoment: "Antes de marketing", priority: "alta", businessImpact: "Ayuda a que la campaña tenga ángulo, tono, promesa y límites de marca." }
+  ],
+  lightTasks: [
+    { title: "Guardar frase o idea de tono", duration: 10, intensity: "baja", frequency: "Cuando aparezca una idea útil", suggestedMoment: "Día ligero", priority: "media", businessImpact: "Crea banco de lenguaje propio para captions, emails y campañas." },
+    { title: "Chequeo rápido de coherencia", duration: 10, intensity: "baja", frequency: "Antes de publicar", suggestedMoment: "Día ligero o antes de publicar", priority: "media", businessImpact: "Evita publicar algo que contradice el tono o la promesa de marca." },
+    { title: "Registrar ‘esto no es The 86 Club’", duration: 15, intensity: "baja", frequency: "Cuando algo se descarte", suggestedMoment: "Después de revisión", priority: "media", businessImpact: "Fortalece límites de marca y evita repetir errores." }
+  ],
+  metrics: [
+    "Consistencia entre productos", "Consistencia entre textos", "Consistencia entre imágenes", "Productos con más interacción", "Productos más guardados o compartidos", "Comentarios sobre identidad", "Tasa de conversión de páginas de producto", "Clicks desde contenido orgánico", "Repetición de mensajes clave", "Confianza percibida de tienda", "Piezas rechazadas por no encajar", "Reglas de marca actualizadas"
+  ],
+  greenSignals: [
+    "La marca se siente reconocible en tienda, productos y contenido.",
+    "Los textos suenan a cultura de cocina y servicio.",
+    "Los diseños nuevos encajan con la promesa de The 86 Club.",
+    "Los productos no parecen genéricos.",
+    "Hay reglas claras de tono y estilo.",
+    "Las campañas se sienten conectadas al drop.",
+    "La tienda transmite confianza y coherencia."
+  ],
+  yellowSignals: [
+    "Hay diseños buenos pero no queda claro si son The 86 Club.",
+    "El tono cambia mucho entre posts, productos y emails.",
+    "Se usan frases genéricas de marca de ropa cualquiera.",
+    "Hay piezas visuales bonitas pero sin historia de marca.",
+    "La página se ve bien, pero no comunica diferencia.",
+    "Se publican contenidos sin mensaje central."
+  ],
+  redSignals: [
+    "The 86 Club parece una tienda POD genérica.",
+    "Cada diseño parece de una marca diferente.",
+    "Se prometen cosas que el producto o la tienda no sostienen.",
+    "La marca depende solo de estética, no de identidad.",
+    "Se copia demasiado el lenguaje de otras marcas.",
+    "La tienda no transmite confianza.",
+    "Las campañas venden producto sin cultura ni razón."
+  ],
+  recommendedLimits: [
+    "No más de 1 revisión grande de marca por semana.",
+    "No cambiar reglas de marca por cada idea nueva.",
+    "No revisar cada detalle hasta bloquear producción.",
+    "No convertir branding en excusa para retrasar ventas.",
+    "No perseguir tendencias que contradicen la identidad.",
+    "Agrupar revisión de marca en bloque para evitar retoque infinito."
+  ],
+  suggestedWeeklyDistribution: [
+    { moment: "Inicio de semana", work: "Definir mensaje central de la semana." },
+    { moment: "Mitad de semana", work: "Revisar coherencia de productos, posts o campañas." },
+    { moment: "Antes de publicar", work: "Chequeo rápido de tono y promesa." },
+    { moment: "Antes del cierre", work: "Registrar aprendizajes y reglas nuevas de marca." }
+  ],
+  profileConnection: "Cuando un perfil tenga este rol, deberá mostrar promesa central actual, mensaje de la semana, reglas de marca activas, tareas de coherencia y alertas si hay piezas fuera de marca.",
+  calendarConnection: "Las tareas de este rol deben agruparse como bloque de Dirección de marca. Si hay productos nuevos, campañas o cambios en Shopify, el sistema podrá activar revisiones de promesa, tono y confianza.",
+  weeklyCloseConnection: "Este rol alimenta el cierre semanal con preguntas sobre coherencia, piezas que fortalecieron la identidad, piezas genéricas, reglas nuevas y mensajes contradictorios.",
+  dashboardConnection: "Este rol alimentará el futuro equilibrio de compañía en el área Identidad / Marca. Si hay producción creativa sin validación de marca, el sistema debe recomendar revisar promesa, tono y coherencia antes de crear más piezas.",
+  taskActivationLogic: [
+    "Si hay productos nuevos, activar revisión de promesa del producto.",
+    "Si hay campaña nueva, activar guía de mensaje para campaña.",
+    "Si hay muchas ideas de diseño, activar validación de pertenencia a marca.",
+    "Si hay cambios en Shopify, activar revisión de confianza de página/producto.",
+    "Si no hay datos suficientes, activar mensaje central y coherencia semanal."
   ]
 };
 
@@ -1871,6 +1979,7 @@ function renderAll() {
   renderGeneric("audit", "Auditoría", ["section", "score", "status", "notes"]);
   renderGeneric("competitors", "Competidor", ["brand", "url", "score", "notes"]);
   renderGeneric("promotion", "Campaña/canal", ["name", "channel", "status", "notes"]);
+  renderNewProjects();
   renderInvestments();
   renderCommercial();
   renderStats();
@@ -2678,9 +2787,9 @@ function roleTaskRows(tasks = []) {
 }
 
 function getCatalogRoles() {
-  const existing = (cache.roles || []).filter(r => r.locked || r.status === "catalog" || r.id === STRATEGIC_DIRECTION_ROLE.id);
-  const hasStrategic = existing.some(r => r.id === STRATEGIC_DIRECTION_ROLE.id);
-  return (hasStrategic ? existing : [STRATEGIC_DIRECTION_ROLE, ...existing])
+  const seedRoles = [STRATEGIC_DIRECTION_ROLE, BRAND_DIRECTION_ROLE];
+  const existing = (cache.roles || []).filter(r => r.locked || r.status === "catalog" || seedRoles.some(seed => seed.id === r.id));
+  return [...seedRoles, ...existing]
     .filter((role, index, arr) => arr.findIndex(r => r.id === role.id) === index);
 }
 
@@ -2740,7 +2849,7 @@ function renderRoleLibraryCard(role) {
         <div><span>Responsabilidad</span><strong>${escapeHtml(role.coreResponsibility || "Pendiente de definir")}</strong></div>
         <div><span>Tareas</span><strong>${taskCount || "Banco pendiente"}</strong></div>
         <div><span>Límite</span><strong>${escapeHtml((role.recommendedLimits || ["Por definir"])[0])}</strong></div>
-        <div><span>Estado</span><strong>${role.id === STRATEGIC_DIRECTION_ROLE.id ? "Conectado" : "Pendiente"}</strong></div>
+        <div><span>Estado</span><strong>${role.id === STRATEGIC_DIRECTION_ROLE.id ? "Conectado" : "Ficha base"}</strong></div>
       </div>
       <div class="role-focus-box">
         <div><span class="eyebrow">Propósito</span><p>${escapeHtml(role.purpose || "Pendiente de definición estratégica.")}</p></div>
@@ -2844,6 +2953,47 @@ async function editGeneric(view, id) {
       await logActivity("edit_record", view, `Editó ${label}: ${data.title || data.name || item.title || item.name || id}`);
     }
   });
+}
+
+
+function renderNewProjects() {
+  const container = $("#newProjects"); if (!container) return;
+  container.innerHTML = `
+    <div class="project-lab-hero">
+      <span class="eyebrow">Futuro módulo</span>
+      <h3>Nuevos proyectos</h3>
+      <p>Esta sección será el filtro estratégico para cualquier proyecto nuevo que The 86 Club quiera agregar al negocio. No será un buzón de ideas sueltas: servirá para evaluar si una propuesta fortalece la marca, si tiene sentido comercial y si merece un protocolo de desarrollo.</p>
+      <div class="role-hero-rules">
+        <span>Propuesta</span><span>Filtro de marca</span><span>Viabilidad</span><span>Prompt para GPT</span><span>Protocolo futuro</span>
+      </div>
+    </div>
+    <div class="project-lab-grid">
+      <article class="project-lab-card">
+        <span class="eyebrow">Paso futuro 1</span>
+        <h4>Formulario de propuesta</h4>
+        <p>El usuario describirá el proyecto, objetivo, relación con The 86 Club, audiencia, recursos necesarios, riesgos, impacto en marca y posible retorno.</p>
+      </article>
+      <article class="project-lab-card">
+        <span class="eyebrow">Paso futuro 2</span>
+        <h4>Filtro de Dirección de marca</h4>
+        <p>La propuesta se evaluará principalmente contra Dirección de marca: promesa, coherencia, identidad, confianza, tono y riesgo de diluir la marca.</p>
+      </article>
+      <article class="project-lab-card">
+        <span class="eyebrow">Paso futuro 3</span>
+        <h4>Exportar propuesta</h4>
+        <p>El sistema generará un TXT o JSON con la propuesta para pegarlo en ChatGPT y pedir una calificación estratégica del proyecto.</p>
+      </article>
+      <article class="project-lab-card">
+        <span class="eyebrow">Paso futuro 4</span>
+        <h4>Protocolo de desarrollo</h4>
+        <p>Si el proyecto es viable, más adelante se podrá convertir en un protocolo detallado de inicio a fin, técnico, dirigido y medible.</p>
+      </article>
+    </div>
+    <div class="learning-box">
+      <span class="eyebrow">Nota de sistema</span>
+      <p>Por ahora esta sección queda como estructura visual y recordatorio. La construcción real del formulario, exportador y protocolo vendrá después de consolidar los roles estratégicos.</p>
+    </div>
+  `;
 }
 
 function renderInvestments() {

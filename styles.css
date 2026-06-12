@@ -1632,3 +1632,23 @@ html:not([data-theme="dark"]) .field select{background:#ffffff;border-color:#c8c
   .weekly-task-source { align-items: flex-start; }
   .role-task-detail-hero { grid-template-columns: 1fr; }
 }
+
+/* V4.9 — New projects placeholder */
+.project-lab-hero,
+.project-lab-card {
+  border: 1px solid var(--border);
+  background: linear-gradient(135deg, rgba(207, 174, 93, 0.10), rgba(255,255,255,0.03));
+  border-radius: 22px;
+  padding: 20px;
+  box-shadow: var(--shadow-soft);
+}
+.project-lab-hero h3 { margin: 6px 0 8px; }
+.project-lab-hero p,
+.project-lab-card p { color: var(--muted); line-height: 1.55; }
+.project-lab-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin: 16px 0;
+}
+.project-lab-card h4 { margin: 8px 0; }
