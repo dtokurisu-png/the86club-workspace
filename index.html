@@ -16,21 +16,92 @@
           <p>Workspace</p>
         </div>
       </div>
-      <nav class="nav" aria-label="Workspace sections">
-        <button class="nav-btn active" data-view="dashboard">Dashboard</button>
-        <button class="nav-btn" data-view="stages">Etapas</button>
-        <button class="nav-btn" data-view="roles">Roles</button>
-        <button class="nav-btn" data-view="products">Productos</button>
-        <button class="nav-btn" data-view="audit">Auditoría tienda</button>
-        <button class="nav-btn" data-view="competitors">Competidores</button>
-        <button class="nav-btn" data-view="promotion">Plan promoción</button>
-        <button class="nav-btn" data-view="investments">Inversiones</button>
-        <button class="nav-btn" data-view="commercial">Ventas y datos</button>
-        <button class="nav-btn" data-view="stats">Estadísticas</button>
-        <button class="nav-btn" data-view="diagnosis">Diagnóstico</button>
-        <button class="nav-btn" data-view="files">Archivos Drive</button>
-        <button class="nav-btn" data-view="decisions">Decisiones</button>
-        <button class="nav-btn" data-view="activity">Actividad</button>
+      <nav class="nav nav-categorized" aria-label="Workspace sections">
+        <section class="nav-group" data-nav-group="direction">
+          <button class="nav-group-toggle" type="button" aria-expanded="true" data-nav-group-toggle="direction">
+            <span class="nav-chevron">▾</span>
+            <span>
+              <strong>Dirección general</strong>
+              <small>Estado global, equilibrio y diagnóstico.</small>
+            </span>
+          </button>
+          <div class="nav-group-items">
+            <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+            <button class="nav-btn" data-view="diagnosis">Diagnóstico</button>
+            <button class="nav-btn" data-view="stats">Equilibrio / estadísticas</button>
+          </div>
+        </section>
+
+        <section class="nav-group" data-nav-group="execution">
+          <button class="nav-group-toggle" type="button" aria-expanded="false" data-nav-group-toggle="execution">
+            <span class="nav-chevron">▸</span>
+            <span>
+              <strong>Ejecución semanal</strong>
+              <small>Etapas, tareas y actividad del equipo.</small>
+            </span>
+          </button>
+          <div class="nav-group-items">
+            <button class="nav-btn" data-view="stages">Etapas</button>
+            <button class="nav-btn" data-view="activity">Actividad</button>
+          </div>
+        </section>
+
+        <section class="nav-group" data-nav-group="team">
+          <button class="nav-group-toggle" type="button" aria-expanded="false" data-nav-group-toggle="team">
+            <span class="nav-chevron">▸</span>
+            <span>
+              <strong>Equipo</strong>
+              <small>Roles, perfiles y carga de trabajo.</small>
+            </span>
+          </button>
+          <div class="nav-group-items">
+            <button class="nav-btn" data-view="roles">Roles</button>
+          </div>
+        </section>
+
+        <section class="nav-group" data-nav-group="business">
+          <button class="nav-group-toggle" type="button" aria-expanded="false" data-nav-group-toggle="business">
+            <span class="nav-chevron">▸</span>
+            <span>
+              <strong>Negocio</strong>
+              <small>Producto, tienda, mercado y promoción.</small>
+            </span>
+          </button>
+          <div class="nav-group-items">
+            <button class="nav-btn" data-view="products">Productos</button>
+            <button class="nav-btn" data-view="audit">Shopify / auditoría</button>
+            <button class="nav-btn" data-view="competitors">Competidores</button>
+            <button class="nav-btn" data-view="promotion">Plan promoción</button>
+          </div>
+        </section>
+
+        <section class="nav-group" data-nav-group="finance">
+          <button class="nav-group-toggle" type="button" aria-expanded="false" data-nav-group-toggle="finance">
+            <span class="nav-chevron">▸</span>
+            <span>
+              <strong>Finanzas</strong>
+              <small>Inversión, ventas y participación.</small>
+            </span>
+          </button>
+          <div class="nav-group-items">
+            <button class="nav-btn" data-view="investments">Inversiones</button>
+            <button class="nav-btn" data-view="commercial">Ventas y datos</button>
+          </div>
+        </section>
+
+        <section class="nav-group" data-nav-group="archive">
+          <button class="nav-group-toggle" type="button" aria-expanded="false" data-nav-group-toggle="archive">
+            <span class="nav-chevron">▸</span>
+            <span>
+              <strong>Archivos y decisiones</strong>
+              <small>Recursos, enlaces y acuerdos registrados.</small>
+            </span>
+          </button>
+          <div class="nav-group-items">
+            <button class="nav-btn" data-view="files">Archivos Drive</button>
+            <button class="nav-btn" data-view="decisions">Decisiones</button>
+          </div>
+        </section>
       </nav>
       <div class="sidebar-footer">
         <button id="themeToggle" class="ghost-btn" type="button">Modo día</button>

@@ -200,14 +200,48 @@ function subscribeAll() {
   unsubscribers.push(activityUnsub);
 }
 
-$$(".nav-btn").forEach(btn => btn.addEventListener("click", () => switchView(btn.dataset.view)));
+function initNavigation() {
+  $$(".nav-btn").forEach(btn => btn.addEventListener("click", () => switchView(btn.dataset.view)));
+  $$("[data-nav-group-toggle]").forEach(toggle => {
+    const groupId = toggle.dataset.navGroupToggle;
+    const group = document.querySelector(`[data-nav-group="${groupId}"]`);
+    const saved = localStorage.getItem(`the86_nav_group_${groupId}`);
+    const shouldCollapse = saved === null ? toggle.getAttribute("aria-expanded") !== "true" : saved === "closed";
+    setNavGroupCollapsed(group, shouldCollapse);
+    toggle.addEventListener("click", () => {
+      const isCollapsed = group.dataset.collapsed === "true";
+      setNavGroupCollapsed(group, !isCollapsed, true);
+    });
+  });
+}
+
+function setNavGroupCollapsed(group, collapsed, persist = false) {
+  if (!group) return;
+  group.dataset.collapsed = collapsed ? "true" : "false";
+  const toggle = group.querySelector("[data-nav-group-toggle]");
+  const chevron = group.querySelector(".nav-chevron");
+  if (toggle) toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  if (chevron) chevron.textContent = collapsed ? "▸" : "▾";
+  if (persist) localStorage.setItem(`the86_nav_group_${group.dataset.navGroup}`, collapsed ? "closed" : "open");
+}
+
+function openGroupForView(view) {
+  const btn = document.querySelector(`.nav-btn[data-view="${view}"]`);
+  const group = btn?.closest(".nav-group");
+  if (group) setNavGroupCollapsed(group, false, true);
+  $$(".nav-group").forEach(g => g.classList.toggle("active-group", g === group));
+}
+
 function switchView(view) {
   $$(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.view === view));
   $$(".view").forEach(v => v.classList.toggle("active-view", v.id === view));
   $("#viewTitle").textContent = viewTitles[view] || "Workspace";
-  $("#currentViewEyebrow").textContent = view;
+  $("#currentViewEyebrow").textContent = viewTitles[view] || view;
   localStorage.setItem("the86_view", view);
+  openGroupForView(view);
 }
+
+initNavigation();
 
 
 const COLLECTION_LABELS = {

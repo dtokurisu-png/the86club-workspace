@@ -187,3 +187,79 @@ html:not([data-theme="dark"]) .field select{background:#ffffff;border-color:#c8c
 }
 .item p strong{color:var(--text); margin-right:6px}
 @media (max-width: 720px){.modal-backdrop{padding:10px}.record-modal{max-height:94vh;border-radius:22px}.form-grid{grid-template-columns:1fr}.modal-header{padding:20px 20px 14px}.modal-form{padding:18px 20px 22px}.modal-actions{flex-direction:column-reverse}.modal-actions button{width:100%}}
+
+/* V4.0 categorized collapsible sidebar */
+.nav-categorized { gap: 10px; overflow-y: auto; padding-right: 2px; }
+.nav-group {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel-soft);
+  overflow: hidden;
+}
+.nav-group-toggle {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  align-items: start;
+  gap: 8px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  padding: 12px 12px;
+  cursor: pointer;
+}
+.nav-group-toggle:hover { background: var(--hover); }
+.nav-group-toggle strong {
+  display: block;
+  font-size: 12px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.nav-group-toggle small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+}
+.nav-chevron {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--accent-strong);
+  background: var(--panel);
+  font-size: 12px;
+  line-height: 1;
+}
+.nav-group-items {
+  display: grid;
+  gap: 6px;
+  padding: 0 9px 10px 39px;
+}
+.nav-group[data-collapsed="true"] .nav-group-items { display: none; }
+.nav-group[data-collapsed="true"] .nav-group-toggle { border-bottom-color: transparent; }
+.nav-group:not([data-collapsed="true"]) .nav-group-toggle { border-bottom-color: var(--line); margin-bottom: 9px; }
+.nav-group .nav-btn {
+  border-radius: 11px;
+  padding: 9px 10px;
+  font-size: 13px;
+  background: var(--panel);
+}
+.nav-group .nav-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-weight: 800;
+}
+.nav-group:has(.nav-btn.active) {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--line));
+}
+@supports not selector(:has(*)) {
+  .nav-group.active-group { border-color: var(--accent); }
+}
