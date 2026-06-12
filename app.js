@@ -304,6 +304,169 @@ function workloadPercentLabel(percent) {
 }
 
 
+function workloadClassFromPercent(percent) {
+  return percent > 90 ? "saturated" : percent > 70 ? "high" : percent > 45 ? "moderate" : "healthy";
+}
+
+function loadShortStatus(percent) {
+  if (percent > 90) return "SAT";
+  if (percent > 70) return "ALT";
+  if (percent > 45) return "MOD";
+  return "SAN";
+}
+
+function metricMiniBar(label, value, max = 100, detail = "", tone = "healthy") {
+  const safeMax = Math.max(1, Number(max || 1));
+  const numeric = Number(String(value).replace(/[^0-9.]/g, ""));
+  const raw = Number.isFinite(numeric) ? numeric : 0;
+  const width = Math.max(0, Math.min(100, Math.round((raw / safeMax) * 100)));
+  return `<div class="mini-metric-row metric-${tone}">
+    <div class="mini-metric-label"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></div>
+    <div class="mini-metric-track"><i style="width:${width}%"></i></div>
+    ${detail ? `<small>${escapeHtml(detail)}</small>` : ""}
+  </div>`;
+}
+
+function availabilityDistributionCard(profile, summary, avStats) {
+  const totalDays = Math.max(1, summary.available + summary.light + summary.protectedDays + (avStats.external || 0));
+  const segments = [
+    { key: "available", label: "Disponibles", value: summary.available, abbr: "DIS" },
+    { key: "light", label: "Ligeros", value: summary.light, abbr: "LIG" },
+    { key: "protected", label: "Protegidos", value: summary.protectedDays, abbr: "PRO" },
+    { key: "external", label: "Trabajo externo", value: avStats.external || 0, abbr: "EXT" }
+  ];
+  return `<button class="graph-card availability-graph-card" data-availability-graph="${profile.id}" type="button" aria-label="Ver distribución de días de ${escapeAttr(profile.name || "perfil")}">
+    <div class="graph-card-head">
+      <div><span class="eyebrow">Distribución de días</span><strong>${dayLabel(summary.closeDay)}</strong><small>Cierre semanal · máx. ${summary.maxHours || 3} h/día</small></div>
+      <span class="graph-open-pill">Ver detalle</span>
+    </div>
+    <div class="stacked-day-bar">
+      ${segments.map(seg => `<i class="seg-${seg.key}" style="width:${Math.max(0, Math.round((seg.value / totalDays) * 100))}%" title="${escapeAttr(seg.label)}: ${seg.value}"></i>`).join("")}
+    </div>
+    <div class="compact-stat-grid">
+      ${segments.slice(0,3).map(seg => `<span><b>${seg.abbr}</b><strong>${seg.value}</strong></span>`).join("")}
+      <span><b>TAR</b><strong>${summary.taskCount || 0}</strong></span>
+    </div>
+  </button>`;
+}
+
+function workloadGraphCard(profile, workload) {
+  const cls = workloadClassFromPercent(workload.average);
+  return `<button class="graph-card workload-graph-card workload-${cls}" data-workload-graph="${profile.id}" type="button" aria-label="Ver carga semanal de ${escapeAttr(profile.name || "perfil")}">
+    <div class="graph-card-head">
+      <div><span class="eyebrow">Carga semanal visual</span><strong>CPS ${workloadPercentLabel(workload.average)}</strong><small>${loadShortStatus(workload.average)} · toca para ver estadística completa</small></div>
+      <span class="graph-open-pill">Abrir gráfica</span>
+    </div>
+    <div class="big-load-bar"><i style="width:${Math.min(workload.average, 100)}%"></i></div>
+    <div class="compact-stat-grid compact-stat-grid-five">
+      <span><b>CPS</b><strong>${workloadPercentLabel(workload.average)}</strong></span>
+      <span><b>DMC</b><strong>${workload.highest?.label?.slice(0,3) || "N/A"}</strong></span>
+      <span><b>SAT</b><strong>${workload.saturatedDays}</strong></span>
+      <span><b>DES</b><strong>${workload.protectedWithTasks}</strong></span>
+      <span><b>TPL</b><strong>${workload.totalPlanned}m</strong></span>
+    </div>
+  </button>`;
+}
+
+function precloseGraphCard(profile, report) {
+  const loadCls = workloadClassFromPercent(report.workloadAverage);
+  const progressWidth = report.totalTasks ? report.progressPercent : 0;
+  return `<button class="graph-card preclose-graph-card workload-${loadCls}" data-preclose-graph="${profile.id}" type="button" aria-label="Ver pre-cierre semanal de ${escapeAttr(profile.name || "perfil")}">
+    <div class="graph-card-head">
+      <div><span class="eyebrow">Avance y pre-cierre</span><strong>AVS ${report.totalTasks ? `${report.progressPercent}%` : "0%"}</strong><small>${report.completed}/${report.totalTasks} tareas · cierre ${dayLabel(report.closeDay)}</small></div>
+      <span class="graph-open-pill">Ver pre-cierre</span>
+    </div>
+    <div class="dual-graph-bars">
+      <div><span>AVS</span><div class="mini-metric-track"><i style="width:${Math.min(progressWidth, 100)}%"></i></div><b>${progressWidth}%</b></div>
+      <div><span>CPS</span><div class="mini-metric-track load-gradient"><i style="width:${Math.min(report.workloadAverage, 100)}%"></i></div><b>${workloadPercentLabel(report.workloadAverage)}</b></div>
+    </div>
+    <div class="compact-stat-grid compact-stat-grid-six">
+      <span><b>CIE</b><strong>${dayLabel(report.closeDay).slice(0,3)}</strong></span>
+      <span><b>RES</b><strong>${report.daysToClose}d</strong></span>
+      <span><b>PEN</b><strong>${report.pending}</strong></span>
+      <span><b>SAT</b><strong>${report.saturatedDays}</strong></span>
+      <span><b>DES</b><strong>${report.protectedWithTasks}</strong></span>
+      <span><b>TMP</b><strong>${report.totalPlanned}m</strong></span>
+    </div>
+  </button>`;
+}
+
+function openAvailabilityGraph(profileId) {
+  const profile = (cache.profiles || []).find(p => p.id === profileId);
+  if (!profile) return;
+  const availability = normalizeAvailability(profile.availability);
+  const tasks = getProfileWeeklyTasks(profile.id);
+  const summary = weeklyCalendarSummary(profile, tasks);
+  const stats = availabilityStats(profile.availability);
+  const rows = WEEK_DAYS.map(d => {
+    const mode = availability.days[d.key]?.mode || "external_plus_business";
+    const isClose = availability.weeklyCloseDay === d.key;
+    return `<div class="modal-day-row ${dayStateClass(mode)}"><strong>${d.label}</strong><span>${dayModeLabel(mode)}</span>${isClose ? `<b>Cierre semanal</b>` : `<small></small>`}</div>`;
+  }).join("");
+  const graph = availabilityDistributionCard(profile, summary, stats).replace(`data-availability-graph="${profile.id}"`, "data-noop='true'");
+  openInfoModal({
+    eyebrow: "Distribución de días",
+    title: `Disponibilidad de ${profile.name || "perfil"}`,
+    html: `<div class="modal-graph-detail">
+      ${graph}
+      <div class="modal-stat-grid">
+        ${metricMiniBar("Días disponibles", summary.available, 7, "Pueden recibir trabajo normal", "healthy")}
+        ${metricMiniBar("Días ligeros", summary.light, 7, "Ideal para revisión o planificación suave", "moderate")}
+        ${metricMiniBar("Días protegidos", summary.protectedDays, 7, "No deberían recibir tareas automáticas", "neutral")}
+        ${metricMiniBar("Tareas actuales", summary.taskCount, Math.max(1, summary.taskCount, 6), `${summary.completed} completadas`, "high")}
+      </div>
+      <div class="modal-day-list">${rows}</div>
+    </div>`
+  });
+}
+
+function openWorkloadGraph(profileId) {
+  const profile = (cache.profiles || []).find(p => p.id === profileId);
+  if (!profile) return;
+  const workload = weeklyWorkloadReport(profile, getProfileWeeklyTasks(profile.id));
+  const dayBars = workload.days.map(d => metricMiniBar(d.label, `${workloadPercentLabel(d.workload.percent)}`, 100, `${d.workload.plannedMinutes} min reales · ${d.workload.weightedMinutes} ponderados · capacidad ${d.workload.capacity} min`, d.workload.status.key)).join("");
+  const graph = workloadGraphCard(profile, workload).replace(`data-workload-graph="${profile.id}"`, "data-noop='true'");
+  openInfoModal({
+    eyebrow: "Carga semanal",
+    title: `Estadísticas de carga de ${profile.name || "perfil"}`,
+    html: `<div class="modal-graph-detail">
+      ${graph}
+      <div class="modal-stat-grid">
+        ${metricMiniBar("Carga promedio semanal", `${workloadPercentLabel(workload.average)}`, 100, workload.recommendation, workloadClassFromPercent(workload.average))}
+        ${metricMiniBar("Día más cargado", workload.highest?.label || "Sin datos", 100, workload.highest ? `${workloadPercentLabel(workload.highest.workload.percent)} de carga` : "0%", workload.highest?.workload?.status?.key || "healthy")}
+        ${metricMiniBar("Días saturados", workload.saturatedDays, 7, "Conviene redistribuir", workload.saturatedDays ? "saturated" : "healthy")}
+        ${metricMiniBar("Descanso invadido", workload.protectedWithTasks, 7, "Días protegidos con tareas", workload.protectedWithTasks ? "high" : "healthy")}
+      </div>
+      <h4 class="modal-subtitle">Carga por día</h4>
+      <div class="modal-stat-grid">${dayBars}</div>
+      ${workload.moveSuggestion ? `<div class="calendar-suggestion">${escapeHtml(workload.moveSuggestion)}</div>` : ""}
+    </div>`
+  });
+}
+
+function openPrecloseGraph(profileId) {
+  const profile = (cache.profiles || []).find(p => p.id === profileId);
+  if (!profile) return;
+  const report = weeklyPreCloseReport(profile, getProfileWeeklyTasks(profile.id));
+  const graph = precloseGraphCard(profile, report).replace(`data-preclose-graph="${profile.id}"`, "data-noop='true'");
+  openInfoModal({
+    eyebrow: "Pre-cierre semanal",
+    title: `Lectura semanal de ${profile.name || "perfil"}`,
+    html: `<div class="modal-graph-detail">
+      ${graph}
+      <div class="modal-stat-grid">
+        ${metricMiniBar("Avance semanal", `${report.totalTasks ? report.progressPercent : 0}%`, 100, report.progress.label, report.progress.className?.includes("green") ? "healthy" : report.progress.className?.includes("yellow") ? "moderate" : "high")}
+        ${metricMiniBar("Carga promedio", `${workloadPercentLabel(report.workloadAverage)}`, 100, `${report.saturatedDays} días saturados`, workloadClassFromPercent(report.workloadAverage))}
+        ${metricMiniBar("Tareas completadas", `${report.completed}/${report.totalTasks}`, Math.max(1, report.totalTasks), `${report.pending} pendientes`, report.pending ? "moderate" : "healthy")}
+        ${metricMiniBar("Tiempo planificado", `${report.totalPlanned} min`, Math.max(1, report.totalPlanned, 180), `${report.totalWeighted} min ponderados`, "neutral")}
+        ${metricMiniBar("Descanso invadido", report.protectedWithTasks, 7, "Días protegidos con tareas", report.protectedWithTasks ? "high" : "healthy")}
+      </div>
+      <div class="preclose-recommendation"><span class="eyebrow">Recomendación del sistema</span><p>${escapeHtml(report.recommendation)}</p></div>
+    </div>`
+  });
+}
+
+
 function daysUntilWeeklyClose(closeDayKey) {
   const jsDayToKey = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
   const todayKey = jsDayToKey[new Date().getDay()];
@@ -440,42 +603,7 @@ function renderWeeklyPreClose(profile) {
         <button class="primary-btn" data-prepare-next-week="${profile.id}">Preparar siguiente semana</button>
       </div>
     </div>
-    <div class="preclose-grid">
-      <div class="preclose-card ${report.progress.className}">
-        <span class="eyebrow">Avance semanal</span>
-        <strong>${report.totalTasks ? `${report.progressPercent}%` : "Sin tareas"}</strong>
-        <small>${report.progress.label}</small>
-      </div>
-      <div class="preclose-card">
-        <span class="eyebrow">Cierre semanal</span>
-        <strong>${dayLabel(report.closeDay)}</strong>
-        <small>${closePhrase}</small>
-      </div>
-      <div class="preclose-card">
-        <span class="eyebrow">Tareas</span>
-        <strong>${report.completed}/${report.totalTasks}</strong>
-        <small>${report.pending} pendientes</small>
-      </div>
-      <div class="preclose-card workload-${report.workloadAverage > 90 ? "saturated" : report.workloadAverage > 70 ? "high" : report.workloadAverage > 45 ? "moderate" : "healthy"}">
-        <span class="eyebrow">Carga promedio</span>
-        <strong>${workloadPercentLabel(report.workloadAverage)}</strong>
-        <small>${report.saturatedDays} días saturados</small>
-      </div>
-      <div class="preclose-card">
-        <span class="eyebrow">Tiempo</span>
-        <strong>${report.totalPlanned} min</strong>
-        <small>${report.totalWeighted} min ponderados</small>
-      </div>
-      <div class="preclose-card ${report.protectedWithTasks ? "status-red" : "status-neutral"}">
-        <span class="eyebrow">Descanso invadido</span>
-        <strong>${report.protectedWithTasks}</strong>
-        <small>días protegidos con tareas</small>
-      </div>
-    </div>
-    <div class="preclose-recommendation">
-      <span class="eyebrow">Recomendación del sistema</span>
-      <p>${escapeHtml(report.recommendation)}</p>
-    </div>
+    ${precloseGraphCard(profile, report)}
     ${closePressure}
     <div class="impact-panel">
       <div><span class="eyebrow">Impacto semanal básico</span><p>Lectura aproximada según tareas manuales, texto y futuras áreas de rol.</p></div>
@@ -612,21 +740,8 @@ function renderWeeklyCalendar(profile) {
         <button class="soft-btn" data-calendar-help="${profile.id}">Cómo leer este calendario</button>
       </div>
     </div>
-    <div class="calendar-summary-strip workload-summary-strip">
-      <span><b>${summary.available}</b> disponibles</span>
-      <span><b>${summary.light}</b> ligeros</span>
-      <span><b>${summary.protectedDays}</b> protegidos</span>
-      <span><b>${summary.maxHours}</b> h/día base</span>
-      <span><b>${summary.taskCount}</b> tareas</span>
-      <span><b>${summary.completed}</b> completadas</span>
-    </div>
-    <div class="workload-overview workload-${workload.average > 90 ? "saturated" : workload.average > 70 ? "high" : workload.average > 45 ? "moderate" : "healthy"}">
-      <div><span class="eyebrow">Carga promedio semanal</span><strong>${workloadPercentLabel(workload.average)}</strong><small>${workload.recommendation}</small></div>
-      <div><span class="eyebrow">Día más cargado</span><strong>${workload.highest?.label || "Sin datos"}</strong><small>${workload.highest ? workloadPercentLabel(workload.highest.workload.percent) : "0%"} de carga</small></div>
-      <div><span class="eyebrow">Saturación</span><strong>${workload.saturatedDays}</strong><small>Días saturados</small></div>
-      <div><span class="eyebrow">Descanso invadido</span><strong>${workload.protectedWithTasks}</strong><small>Días protegidos con tareas</small></div>
-      <div><span class="eyebrow">Tiempo planificado</span><strong>${workload.totalPlanned} min</strong><small>${workload.totalWeighted} min ponderados</small></div>
-    </div>
+    ${availabilityDistributionCard(profile, summary, availabilityStats(profile.availability))}
+    ${workloadGraphCard(profile, workload)}
     ${workload.moveSuggestion ? `<div class="calendar-suggestion">${workload.moveSuggestion}</div>` : ""}
     ${closeWarning}
     <div class="week-board">
@@ -1504,12 +1619,7 @@ function renderProfiles() {
           <div><span class="eyebrow">Disponibilidad semanal</span><strong>Cierre: ${dayLabel(avStats.closeDay)}</strong></div>
           <span class="badge">Máx. ${avStats.maxHours || 3} h/día</span>
         </div>
-        <div class="availability-metrics">
-          <span><b>${avStats.available}</b> días disponibles</span>
-          <span><b>${avStats.light}</b> días ligeros</span>
-          <span><b>${avStats.protectedDays}</b> días protegidos</span>
-        </div>
-        <div class="availability-days">${dayChips}</div>
+        ${availabilityDistributionCard(p, { available: avStats.available, light: avStats.light, protectedDays: avStats.protectedDays, maxHours: avStats.maxHours, closeDay: avStats.closeDay, taskCount: getProfileWeeklyTasks(p.id).length, completed: getProfileWeeklyTasks(p.id).filter(t => t.status === "completed").length }, avStats)}
       </div>
       ${renderWeeklyCalendar(p)}
       ${renderWeeklyPreClose(p)}
@@ -1538,6 +1648,9 @@ function renderProfiles() {
   $$(`[data-profile-info]`).forEach(btn => btn.addEventListener("click", () => openProfileImportance(btn.dataset.profileInfo)));
   $$(`[data-calendar-help]`).forEach(btn => btn.addEventListener("click", () => openCalendarHelp(btn.dataset.calendarHelp)));
   $$(`[data-workload-help]`).forEach(btn => btn.addEventListener("click", () => openWorkloadHelp(btn.dataset.workloadHelp)));
+  $$(`[data-availability-graph]`).forEach(btn => btn.addEventListener("click", () => openAvailabilityGraph(btn.dataset.availabilityGraph)));
+  $$(`[data-workload-graph]`).forEach(btn => btn.addEventListener("click", () => openWorkloadGraph(btn.dataset.workloadGraph)));
+  $$(`[data-preclose-graph]`).forEach(btn => btn.addEventListener("click", () => openPrecloseGraph(btn.dataset.precloseGraph)));
   $$(`[data-preclose-help]`).forEach(btn => btn.addEventListener("click", () => openPreCloseHelp(btn.dataset.precloseHelp)));
   $$(`[data-prepare-next-week]`).forEach(btn => btn.addEventListener("click", () => prepareNextWeek(btn.dataset.prepareNextWeek)));
   $$(`[data-add-weekly-task]`).forEach(btn => btn.addEventListener("click", () => {
