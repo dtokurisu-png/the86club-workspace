@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The 86 Club Workspace</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-block">
+        <div class="brand-mark">86</div>
+        <div>
+          <h1>The 86 Club</h1>
+          <p>Workspace</p>
+        </div>
+      </div>
+
+      <nav class="nav-list" aria-label="Workspace navigation">
+        <button class="nav-item active" data-view="dashboard">Dashboard</button>
+        <button class="nav-item" data-view="stage-01">Etapa 1 · Roles</button>
+        <button class="nav-item" data-view="stage-02">Etapa 2 · Base estratégica</button>
+        <button class="nav-item" data-view="products">Productos</button>
+        <button class="nav-item" data-view="audit">Auditoría Shopify</button>
+        <button class="nav-item" data-view="competitors">Competidores</button>
+        <button class="nav-item" data-view="promotion">Plan de promoción</button>
+        <button class="nav-item" data-view="files">Archivos</button>
+        <button class="nav-item" data-view="activity">Actividad</button>
+        <button class="nav-item" data-view="decisions">Decisiones</button>
+        <button class="nav-item" data-view="settings">Configuración</button>
+      </nav>
+    </aside>
+
+    <main class="main-panel">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Private operating system</p>
+          <h2 id="pageTitle">Dashboard</h2>
+        </div>
+        <div class="topbar-actions">
+          <button id="themeToggle" class="ghost-button" type="button">Modo día</button>
+          <button id="loginButton" class="primary-button" type="button">Iniciar sesión</button>
+          <button id="logoutButton" class="ghost-button hidden" type="button">Salir</button>
+        </div>
+      </header>
+
+      <section id="loginPanel" class="login-panel hidden">
+        <div class="card login-card">
+          <h3>Entrar al workspace</h3>
+          <p>Esta pantalla queda lista para conectar Firebase Authentication.</p>
+          <label>Email<input id="emailInput" type="email" placeholder="correo@ejemplo.com" /></label>
+          <label>Contraseña<input id="passwordInput" type="password" placeholder="••••••••" /></label>
+          <button id="submitLogin" class="primary-button" type="button">Entrar</button>
+          <p id="loginMessage" class="small-note"></p>
+        </div>
+      </section>
+
+      <section id="content" class="content-grid"></section>
+    </main>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
