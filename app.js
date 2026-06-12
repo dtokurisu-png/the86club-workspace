@@ -470,6 +470,27 @@ function openRecordModal({ title, collectionName, schema, initial = {}, onSave }
   });
 }
 
+function openInfoModal({ eyebrow = "Guía", title = "Información", html = "" }) {
+  const root = ensureModalRoot();
+  root.innerHTML = `
+    <div class="modal-backdrop" role="dialog" aria-modal="true">
+      <div class="record-modal info-modal">
+        <div class="modal-header">
+          <div><span class="eyebrow">${eyebrow}</span><h2>${title}</h2></div>
+          <button class="icon-btn" data-modal-close aria-label="Cerrar">×</button>
+        </div>
+        <div class="modal-form">
+          ${html}
+          <div class="modal-actions">
+            <button type="button" class="primary-btn" data-modal-close>Entendido</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  root.querySelectorAll("[data-modal-close]").forEach(btn => btn.addEventListener("click", closeModal));
+  root.querySelector(".modal-backdrop").addEventListener("click", (e) => { if (e.target.classList.contains("modal-backdrop")) closeModal(); });
+}
+
 function closeModal() { const root = document.querySelector("#appModalRoot"); if (root) root.innerHTML = ""; }
 function defaultForField(f) {
   if (f.type === "date") return new Date().toISOString().slice(0,10);
@@ -628,7 +649,7 @@ function renderStages() {
               </div>
               <button class="soft-btn" data-add-task="${s.id}" type="button">Agregar tarea</button>
             </div>
-            <p class="stage-note">Por ahora estas tareas conservan sus checks actuales. En el siguiente bloque las convertiremos en acciones guiadas con modal de importancia y modal de datos reales.</p>
+            <p class="stage-note">Cada tarea ahora funciona como una acción guiada: primero entiendes por qué importa, luego completas la acción y el sistema marca el avance con evidencia.</p>
             <div class="stage-task-list">${tasks.map(taskBlock).join("") || emptyState()}</div>
           </div>
         </div>
@@ -658,23 +679,184 @@ function renderStages() {
     }
   }));
   $$(`[data-add-task]`).forEach(b => b.addEventListener("click", (e) => { e.stopPropagation(); addTask(b.dataset.addTask); }));
-  $$(`[data-task] input[type="checkbox"]`).forEach(cb => cb.addEventListener("change", onSubtaskToggle));
+  $$(`[data-task-action]`).forEach(btn => btn.addEventListener("click", () => openGuidedTaskAction(btn.dataset.taskAction, Number(btn.dataset.subtaskIndex))));
+  $$(`[data-task-importance]`).forEach(btn => btn.addEventListener("click", () => openTaskImportance(btn.dataset.taskImportance, btn.dataset.subtaskIndex !== undefined ? Number(btn.dataset.subtaskIndex) : null)));
+  $$(`[data-task-reopen]`).forEach(btn => btn.addEventListener("click", () => reopenGuidedSubtask(btn.dataset.taskReopen, Number(btn.dataset.subtaskIndex))));
   $$(`[data-module]`).forEach(b => b.addEventListener("click", () => switchView(b.dataset.module)));
 }
 
 function taskBlock(t) {
-  return `<div class="item" data-task="${t.id}"><div class="item-head"><strong>${t.title}</strong><span class="badge">${t.status || "pending"}</span></div>${(t.subtasks||[]).map((s,i)=>`<label class="checkrow"><input type="checkbox" data-index="${i}" ${s.done ? "checked" : ""}/> ${s.title}</label>`).join("")}<div class="small-actions"><button class="soft-btn" data-module="files">Ir a archivos</button><button class="soft-btn" data-module="decisions">Ir a decisiones</button><button class="soft-btn" data-module="investments">Ir a inversiones</button><button class="soft-btn" data-module="stats">Ir a estadísticas</button></div></div>`;
+  const subtasks = (t.subtasks && t.subtasks.length) ? t.subtasks : [{ title: t.title, done: t.status === "done" }];
+  const doneCount = subtasks.filter(s => s.done).length;
+  const statusLabel = subtasks.length && doneCount === subtasks.length ? "completada" : doneCount ? "en progreso" : "pendiente";
+  return `
+    <div class="guided-task-card" data-task="${t.id}">
+      <div class="guided-task-head">
+        <div>
+          <span class="eyebrow">Tarea guiada</span>
+          <strong>${t.title}</strong>
+          <small>${doneCount}/${subtasks.length} acciones completadas</small>
+        </div>
+        <span class="badge">${statusLabel}</span>
+      </div>
+      <div class="guided-subtask-list">
+        ${subtasks.map((subtask,i)=>guidedSubtaskHtml(t, subtask, i)).join("")}
+      </div>
+      <div class="small-actions task-shortcuts">
+        <button class="soft-btn" data-task-importance="${t.id}" type="button">Importancia de la tarea</button>
+        <button class="soft-btn" data-module="files" type="button">Archivos</button>
+        <button class="soft-btn" data-module="decisions" type="button">Decisiones</button>
+        <button class="soft-btn" data-module="stats" type="button">Estadísticas</button>
+      </div>
+    </div>`;
 }
 
-async function onSubtaskToggle(e) {
-  const taskEl = e.target.closest("[data-task]");
-  const task = cache.tasks.find(t => t.id === taskEl.dataset.task);
-  const index = Number(e.target.dataset.index);
+function guidedSubtaskHtml(task, subtask, index) {
+  const done = Boolean(subtask.done);
+  const actionText = done ? "Actualizar evidencia" : "Hacer acción";
+  return `
+    <div class="guided-subtask" data-done="${done ? "true" : "false"}">
+      <div class="subtask-status-dot" aria-hidden="true">${done ? "✓" : ""}</div>
+      <div class="subtask-main">
+        <strong>${subtask.title}</strong>
+        <small>${done ? "Guardado en el sistema" : "Pendiente de acción real"}</small>
+        ${subtask.actionSummary ? `<p>${formatValue(subtask.actionSummary)}</p>` : ""}
+      </div>
+      <div class="subtask-actions">
+        <button class="primary-btn" data-task-action="${task.id}" data-subtask-index="${index}" type="button">${actionText}</button>
+        <button class="soft-btn" data-task-importance="${task.id}" data-subtask-index="${index}" type="button">Importancia</button>
+        ${done ? `<button class="soft-btn" data-task-reopen="${task.id}" data-subtask-index="${index}" type="button">Reabrir</button>` : ""}
+      </div>
+    </div>`;
+}
+
+function getTaskById(taskId) {
+  return cache.tasks.find(t => t.id === taskId);
+}
+
+function importanceTextFor(task, subtaskTitle) {
+  const title = `${task?.title || ""} ${subtaskTitle || ""}`.toLowerCase();
+  if (/perfil|usuario|correo|christopher|adrián|adrian/.test(title)) {
+    return {
+      focus: "Crear perfiles reales convierte el workspace en una herramienta de dirección, no en una libreta anónima.",
+      why: "El negocio necesita saber quién ejecuta, quién revisa y quién está cargando demasiadas responsabilidades. Sin perfiles, las tareas quedan sueltas y después no se puede medir evolución semanal ni carga por persona.",
+      avoids: "Evita confusión de responsabilidades, pérdida de seguimiento y decisiones hechas desde impulso porque nadie sabe exactamente qué le toca a quién.",
+      business: "Con perfiles claros, el sistema podrá conectar roles, tareas, actividad y recomendaciones para que The 86 Club avance con orden y venda desde una operación más sana."
+    };
+  }
+  if (/rol|responsabilidad|fortaleza|evitar/.test(title)) {
+    return {
+      focus: "Asignar roles evita que el equipo trabaje como incendio creativo permanente.",
+      why: "En un negocio pequeño todos pueden ayudar, pero cada persona necesita un centro de responsabilidad. El rol principal define qué cuida esa persona y los subroles limitan dónde puede apoyar sin saturarse.",
+      avoids: "Evita duplicar trabajo, mezclar decisiones comerciales con impulsos visuales y gastar energía en áreas que no empujan ventas.",
+      business: "Cuando los roles están claros, el dashboard puede detectar exceso creativo, falta de marketing, baja operación o mala distribución de carga."
+    };
+  }
+  if (/flujo|revisión|publicación|decisión|idea|diseño|retoque/.test(title)) {
+    return {
+      focus: "Definir flujo de trabajo convierte ideas en piezas publicables sin perder control.",
+      why: "Una idea no debería saltar directo a publicación. Necesita pasar por concepto, producción, revisión, ajuste y registro para que el arte sirva a la marca y no solo al impulso del momento.",
+      avoids: "Evita cambios infinitos, discusiones confusas, diseños sueltos y cansancio por rehacer trabajo que nunca tuvo criterio de aprobación.",
+      business: "Un flujo claro permite producir menos piezas, pero mejores, más coherentes y más fáciles de convertir en campañas, productos y contenido."
+    };
+  }
+  if (/producto|precio|margen|colecci|hero|support|conversion/.test(title)) {
+    return {
+      focus: "Ordenar productos permite vender con intención, no solo acumular diseños.",
+      why: "Cada producto debe tener función: atraer, sostener colección o convertir. Si todo se trata igual, no sabes qué promover ni qué medir.",
+      avoids: "Evita una tienda llena de piezas sin jerarquía, márgenes poco claros y campañas que empujan productos equivocados.",
+      business: "Clasificar producto conecta diseño con precio, margen, promoción y análisis de ventas."
+    };
+  }
+  if (/marketing|promoci|campaña|canal|instagram|email|etsy|contenido/.test(title)) {
+    return {
+      focus: "La promoción debe ser sistema, no publicación nerviosa.",
+      why: "Un negocio POD necesita visibilidad constante, pero cada canal debe tener objetivo, mensaje, responsable y señal de resultado.",
+      avoids: "Evita publicar mucho sin aprender nada, gastar energía en canales débiles o abandonar canales que sí podrían vender con mejor estructura.",
+      business: "Esta tarea conecta contenido, campaña, producto y medición para que la promoción empuje ventas reales."
+    };
+  }
+  if (/venta|ads|invers|capital|abono|shopify|meta|finanza|participación/.test(title)) {
+    return {
+      focus: "Los números protegen al negocio de avanzar a ciegas.",
+      why: "Inversión, ventas, ads y participación deben verse juntos para saber si el proyecto está aprendiendo, recuperando o solo gastando.",
+      avoids: "Evita discusiones por aportes, gasto publicitario sin control y decisiones basadas solo en emoción.",
+      business: "Con datos financieros básicos, el workspace puede mostrar balance, participación estimada y señales de ajuste."
+    };
+  }
+  return {
+    focus: "Esta acción existe para convertir intención en avance registrado.",
+    why: "Una tarea sin evidencia se olvida fácil. Guardar el resultado permite que el sistema mida progreso, actualice etapas y construya historial semanal más adelante.",
+    avoids: "Evita checks decorativos, trabajo invisible y pérdida de aprendizaje.",
+    business: "Cada acción completada debe acercar The 86 Club a operar mejor, comunicar mejor o vender con más claridad."
+  };
+}
+
+function openTaskImportance(taskId, subtaskIndex = null) {
+  const task = getTaskById(taskId);
+  if (!task) return;
+  const subtask = subtaskIndex !== null ? (task.subtasks || [])[subtaskIndex] : null;
+  const info = importanceTextFor(task, subtask?.title);
+  openInfoModal({
+    eyebrow: subtask ? "Importancia de la acción" : "Importancia de la tarea",
+    title: subtask ? subtask.title : task.title,
+    html: `
+      <div class="learning-stack">
+        <div class="learning-box"><span class="eyebrow">Enfoque</span><p>${info.focus}</p></div>
+        <div class="learning-box"><span class="eyebrow">Por qué importa</span><p>${info.why}</p></div>
+        <div class="learning-box"><span class="eyebrow">Qué evita</span><p>${info.avoids}</p></div>
+        <div class="learning-box"><span class="eyebrow">Cómo ayuda al negocio</span><p>${info.business}</p></div>
+      </div>`
+  });
+}
+
+async function openGuidedTaskAction(taskId, subtaskIndex) {
+  const task = getTaskById(taskId);
+  if (!task) return;
+  const subtasks = [...(task.subtasks || [{ title: task.title, done: task.status === "done" }])];
+  const subtask = subtasks[subtaskIndex];
+  if (!subtask) return;
+  const result = await openRecordModal({
+    title: subtask.done ? `Actualizar acción: ${subtask.title}` : `Completar acción: ${subtask.title}`,
+    collectionName: task.title,
+    schema: [
+      {name:"actionSummary", label:"Resultado de la acción", required:true, type:"textarea", placeholder:"Escribe qué quedó definido, creado, revisado o decidido."},
+      {name:"evidenceUrl", label:"Evidencia o link opcional", type:"url", placeholder:"Link de Drive, Shopify, documento, captura o recurso relacionado."},
+      {name:"nextStep", label:"Siguiente paso recomendado", placeholder:"Qué debería pasar después de esta acción."},
+      {name:"notes", label:"Notas internas", type:"textarea", placeholder:"Contexto, dudas, riesgos o comentarios importantes."}
+    ],
+    initial: {
+      actionSummary: subtask.actionSummary || "",
+      evidenceUrl: subtask.evidenceUrl || "",
+      nextStep: subtask.nextStep || "",
+      notes: subtask.notes || ""
+    },
+    onSave: async (data) => {
+      subtasks[subtaskIndex] = {
+        ...subtask,
+        ...data,
+        done: true,
+        completedAt: new Date().toISOString(),
+        completedBy: currentUser?.email || "usuario"
+      };
+      const status = subtasks.every(s => s.done) ? "done" : "in_progress";
+      await updateDoc(workspaceDoc("tasks", task.id), { subtasks, status, updatedAt: serverTimestamp() });
+      await logActivity("complete_guided_task", "stages", `Completó acción: ${subtask.title} en ${task.title}`);
+    }
+  });
+  return result;
+}
+
+async function reopenGuidedSubtask(taskId, subtaskIndex) {
+  const task = getTaskById(taskId);
+  if (!task) return;
   const subtasks = [...(task.subtasks || [])];
-  subtasks[index] = { ...subtasks[index], done: e.target.checked };
-  const status = subtasks.every(s => s.done) ? "done" : "in_progress";
+  const subtask = subtasks[subtaskIndex];
+  if (!subtask) return;
+  subtasks[subtaskIndex] = { ...subtask, done: false, reopenedAt: new Date().toISOString(), reopenedBy: currentUser?.email || "usuario" };
+  const status = subtasks.some(s => s.done) ? "in_progress" : "pending";
   await updateDoc(workspaceDoc("tasks", task.id), { subtasks, status, updatedAt: serverTimestamp() });
-  await logActivity("update_task", "stages", `Actualizó subtarea en: ${task.title}`);
+  await logActivity("reopen_guided_task", "stages", `Reabrió acción: ${subtask.title} en ${task.title}`);
 }
 
 async function addStage() {

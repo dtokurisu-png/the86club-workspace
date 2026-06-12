@@ -1,7 +1,3 @@
-# The 86 Club Workspace — V4.1
+# The 86 Club Workspace V4.2
 
-Actualización: etapas colapsables y lectura guiada.
-
-Summary sugerido para GitHub Desktop:
-
-Add collapsible guided stages v4.1
+V4.2 convierte las tareas de Etapas en acciones guiadas con botón de importancia, modal educativo, modal operativo y guardado de evidencia antes de marcar avance.
