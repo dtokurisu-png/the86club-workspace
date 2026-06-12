@@ -1,1 +1,1 @@
-The 86 Club Workspace V4.9.1 - Sidebar category scroll fix
+The 86 Club Workspace V4.9.5 - sidebar cache and layout fix
