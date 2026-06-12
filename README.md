@@ -1,16 +1,3 @@
-# The 86 Club Workspace V3
+# The 86 Club Workspace
 
-Private operating workspace for The 86 Club.
-
-V3 agrega:
-- Inversiones
-- Abonos entre socios / simulación de participación
-- Ventas y datos comerciales
-- Estadísticas simples
-- Diagnóstico estratégico
-
-Stack:
-- Netlify: publicación
-- Firebase Auth: login
-- Firestore: datos
-- Google Drive: archivos por enlaces
+V3.3 - Modal fields now use boxed label and input zones for clearer data entry.

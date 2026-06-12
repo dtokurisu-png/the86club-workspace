@@ -396,9 +396,15 @@ function defaultForField(f) {
 function fieldInputHtml(f) {
   const required = f.required ? "required" : "";
   const placeholder = f.placeholder ? `placeholder="${escapeAttr(f.placeholder)}"` : "";
-  if (f.type === "textarea") return `<label class="field full"><span>${f.label}</span><textarea name="${f.name}" ${placeholder} ${required}></textarea></label>`;
-  if (f.type === "select") return `<label class="field"><span>${f.label}</span><select name="${f.name}" ${required}>${(f.options||[]).map(o=>`<option value="${escapeAttr(o)}">${o}</option>`).join("")}</select></label>`;
-  return `<label class="field"><span>${f.label}</span><input name="${f.name}" type="${f.type || "text"}" ${placeholder} ${required}/></label>`;
+  const requiredMark = f.required ? `<b class="required-mark">Requerido</b>` : "";
+  const labelBlock = `<div class="field-label-box"><span>${f.label}</span>${requiredMark}</div>`;
+  if (f.type === "textarea") {
+    return `<label class="field full">${labelBlock}<div class="field-input-box"><textarea name="${f.name}" ${placeholder} ${required}></textarea></div></label>`;
+  }
+  if (f.type === "select") {
+    return `<label class="field">${labelBlock}<div class="field-input-box"><select name="${f.name}" ${required}>${(f.options||[]).map(o=>`<option value="${escapeAttr(o)}">${o}</option>`).join("")}</select></div></label>`;
+  }
+  return `<label class="field">${labelBlock}<div class="field-input-box"><input name="${f.name}" type="${f.type || "text"}" ${placeholder} ${required}/></div></label>`;
 }
 function escapeAttr(v) { return String(v || "").replaceAll('"', '&quot;'); }
 function recordActions(view, id) { return `<div class="small-actions"><button class="soft-btn" data-edit-record="${view}:${id}">Editar</button></div>`; }
