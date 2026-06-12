@@ -1871,3 +1871,140 @@ html:not([data-theme="dark"]) .field select{background:#ffffff;border-color:#c8c
   .nav-group:not([data-collapsed="true"]){max-height:none !important; overflow:visible !important;}
   .nav-group:not([data-collapsed="true"] .nav-group-items){max-height:none !important; overflow:visible !important;}
 }
+
+/* V4.9.4 sidebar settings menu + real navigation container
+   Header stays fixed, nav scrolls invisibly, settings moved out of the bottom. */
+.sidebar{
+  height:100dvh !important;
+  max-height:100dvh !important;
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+  gap:14px !important;
+  padding:18px !important;
+}
+.sidebar-head{
+  flex:0 0 auto !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:10px !important;
+  position:relative !important;
+  z-index:8 !important;
+}
+.sidebar-head .brand-block{
+  min-width:0 !important;
+  flex:1 1 auto !important;
+}
+.sidebar-settings-wrap{
+  flex:0 0 auto !important;
+  position:relative !important;
+}
+.settings-menu-btn{
+  width:38px !important;
+  height:38px !important;
+  border:1px solid var(--line) !important;
+  border-radius:12px !important;
+  background:var(--panel-soft) !important;
+  color:var(--accent-strong) !important;
+  cursor:pointer !important;
+  font-size:18px !important;
+  line-height:1 !important;
+  display:grid !important;
+  place-items:center !important;
+}
+.settings-menu-btn:hover{ background:var(--hover) !important; }
+.settings-popover{
+  position:absolute !important;
+  top:46px !important;
+  right:0 !important;
+  width:230px !important;
+  padding:12px !important;
+  border:1px solid var(--line) !important;
+  border-radius:16px !important;
+  background:var(--panel) !important;
+  box-shadow:var(--shadow) !important;
+  display:grid !important;
+  gap:8px !important;
+  z-index:50 !important;
+}
+.settings-popover.hidden{ display:none !important; }
+.settings-title{
+  color:var(--accent-strong) !important;
+  text-transform:uppercase !important;
+  letter-spacing:.12em !important;
+  font-size:11px !important;
+  font-weight:800 !important;
+  padding:0 2px 4px !important;
+}
+.settings-popover .ghost-btn{
+  width:100% !important;
+  text-align:left !important;
+  min-height:38px !important;
+}
+.settings-popover .ghost-btn:disabled{
+  opacity:.45 !important;
+  cursor:not-allowed !important;
+}
+.sidebar-nav-scroll{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  scrollbar-width:none !important;
+  -ms-overflow-style:none !important;
+  padding-right:2px !important;
+  overscroll-behavior:contain !important;
+}
+.sidebar-nav-scroll::-webkit-scrollbar{ display:none !important; width:0 !important; height:0 !important; }
+.nav-categorized{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:12px !important;
+  overflow:visible !important;
+  max-height:none !important;
+  min-height:auto !important;
+  padding:0 0 18px 0 !important;
+}
+.nav-group{
+  flex:0 0 auto !important;
+  min-height:auto !important;
+  max-height:none !important;
+  overflow:hidden !important;
+  display:block !important;
+}
+.nav-group:not([data-collapsed="true"]){
+  overflow:hidden !important;
+}
+.nav-group-items{
+  display:grid !important;
+  grid-template-columns:1fr !important;
+  gap:7px !important;
+  padding:0 10px 13px 39px !important;
+  min-height:auto !important;
+  max-height:none !important;
+  overflow:visible !important;
+}
+.nav-group[data-collapsed="true"] .nav-group-items{ display:none !important; }
+.nav-group .nav-btn{
+  min-height:40px !important;
+  width:100% !important;
+  max-width:100% !important;
+  white-space:normal !important;
+  overflow-wrap:anywhere !important;
+  position:relative !important;
+  z-index:2 !important;
+}
+.sidebar-footer{ display:none !important; }
+@media (max-width:960px){
+  .sidebar{
+    position:relative !important;
+    height:78dvh !important;
+    max-height:78dvh !important;
+    overflow:hidden !important;
+  }
+  .settings-popover{
+    right:auto !important;
+    left:0 !important;
+  }
+}
