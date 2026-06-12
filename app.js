@@ -874,11 +874,14 @@ function renderWeeklyCalendar(profile) {
 
 function weeklyTaskHtml(task) {
   const statusClass = task.status === "completed" ? "task-completed" : "task-pending";
-  return `<div class="weekly-task ${statusClass}">
+  const roleData = roleTaskStatusData(task);
+  const isRoleTask = task.source === "role" || task.roleId || task.roleName;
+  return `<div class="weekly-task ${statusClass} ${isRoleTask ? "weekly-task-role" : ""} ${roleData.className}">
     <div class="weekly-task-head">
       <strong>${escapeHtml(task.title || "Tarea sin título")}</strong>
       <span>${taskStatusLabel(task.status)}</span>
     </div>
+    <div class="weekly-task-source"><span class="role-source-badge ${roleData.className}">${escapeHtml(roleData.label)}</span>${task.businessImpact ? `<small>${escapeHtml(task.businessImpact)}</small>` : ""}</div>
     ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ""}
     <div class="weekly-task-meta">
       <span>${taskMinutes(task)} min</span>
@@ -887,6 +890,7 @@ function weeklyTaskHtml(task) {
       <span>${task.source || "manual"}</span>
     </div>
     <div class="small-actions compact-actions">
+      ${isRoleTask ? `<button class="soft-btn" data-weekly-task-detail="${task.id}">Ver rol</button>` : ""}
       <button class="soft-btn" data-move-weekly-task="${task.id}">Mover</button>
       <button class="soft-btn" data-toggle-weekly-task="${task.id}">${task.status === "completed" ? "Reabrir" : "Completar"}</button>
     </div>
@@ -1456,6 +1460,20 @@ function selectStrategicTasksForProfile(profile) {
   return selected.slice(0, 4);
 }
 
+function getStrategicBankTask(task = {}) {
+  const taskId = task.roleTaskId || task.strategicTaskId || task.id;
+  return STRATEGIC_ROLE_TASK_BANK.find(t => t.id === taskId) || null;
+}
+
+function roleTaskStatusData(task = {}) {
+  const isRole = task.source === "role" || task.roleId || task.roleName;
+  if (!isRole) return { label: "Manual", className: "role-neutral" };
+  if (task.roleId === STRATEGIC_ROLE_ID || task.roleName === STRATEGIC_ROLE_NAME) {
+    return { label: "Dirección estratégica", className: "role-strategic" };
+  }
+  return { label: task.roleName || "Rol", className: "role-neutral" };
+}
+
 function weightedMinutesForBankTask(t) {
   const w = INTENSITY_WEIGHT[t.intensity || "medium"] || INTENSITY_WEIGHT.medium;
   return Math.round((Number(t.estimatedMinutes) || 30) * w);
@@ -1521,13 +1539,49 @@ function buildStrategicWeeklyTask(profile, task, assignedDay) {
 }
 
 function strategicRoleSummary(profile) {
-  if (!profileHasStrategicRole(profile)) return `<div class="role-connection muted-box"><span class="eyebrow">Rol estratégico</span><p>Este perfil todavía no tiene Dirección estratégica del negocio activa.</p></div>`;
+  const activeRoles = profileRoleLabels(profile);
   const roleTasks = getProfileWeeklyTasks(profile.id).filter(t => t.roleId === STRATEGIC_ROLE_ID || t.roleName === STRATEGIC_ROLE_NAME);
+  if (!profileHasStrategicRole(profile)) {
+    return `<div class="role-connection muted-box role-visual-panel">
+      <div class="role-visual-head">
+        <div><span class="eyebrow">Roles activos</span><h4>Sin Dirección estratégica activa</h4><p>Asigna este rol en el perfil para que pueda generar tareas de dirección, prioridades y equilibrio.</p></div>
+        <span class="role-status-chip role-neutral">Pendiente</span>
+      </div>
+      <div class="role-mini-bars">
+        <div><span>ROL</span><i style="width:0%"></i><b>0</b></div>
+        <div><span>TAR</span><i style="width:0%"></i><b>0</b></div>
+        <div><span>CAL</span><i style="width:0%"></i><b>0</b></div>
+      </div>
+    </div>`;
+  }
   const pending = roleTasks.filter(t => t.status !== "completed").length;
   const completed = roleTasks.filter(t => t.status === "completed").length;
-  return `<div class="role-connection active-role-connection">
-    <div><span class="eyebrow">Rol activo</span><h4>Dirección estratégica del negocio</h4><p>Este rol puede generar tareas estratégicas agrupadas por día, respetando disponibilidad, carga y descanso.</p></div>
-    <div class="role-connection-stats"><span>${roleTasks.length} tareas</span><span>${completed} hechas</span><span>${pending} pendientes</span></div>
+  const dayMap = roleTasks.reduce((acc, t) => { acc[t.assignedDay] = (acc[t.assignedDay] || 0) + 1; return acc; }, {});
+  const busiest = Object.entries(dayMap).sort((a,b) => b[1]-a[1])[0];
+  const totalWeighted = roleTasks.reduce((sum, t) => sum + weightedTaskMinutes(t), 0);
+  const totalMinutes = roleTasks.reduce((sum, t) => sum + taskMinutes(t), 0);
+  const completionPercent = roleTasks.length ? Math.round((completed / roleTasks.length) * 100) : 0;
+  const taskPercent = Math.min(100, roleTasks.length * 25);
+  const calendarPercent = busiest ? Math.min(100, busiest[1] * 35) : 0;
+  const roleBarState = roleTasks.length ? "state-green" : "state-neutral";
+  const taskBarState = pending >= 4 ? "state-orange" : pending >= 2 ? "state-yellow" : roleTasks.length ? "state-green" : "state-neutral";
+  const calendarState = busiest && busiest[1] >= 4 ? "state-red" : busiest && busiest[1] >= 3 ? "state-orange" : busiest ? "state-green" : "state-neutral";
+  return `<div class="role-connection active-role-connection role-visual-panel">
+    <div class="role-visual-head">
+      <div><span class="eyebrow">Rol activo</span><h4>Dirección estratégica del negocio</h4><p>Este panel muestra cómo cae el rol en este perfil: tareas generadas, día donde se concentran y carga aproximada.</p></div>
+      <span class="role-status-chip role-strategic">Conectado</span>
+    </div>
+    <div class="role-active-tags">
+      ${activeRoles.map(r => `<span>${escapeHtml(r)}</span>`).join("")}
+    </div>
+    <div class="role-mini-bars">
+      <div class="${roleBarState}"><span>ROL</span><i style="width:${roleTasks.length ? 100 : 0}%"></i><b>${roleTasks.length ? "Activo" : "0"}</b></div>
+      <div class="${taskBarState}"><span>TAR</span><i style="width:${taskPercent}%"></i><b>${roleTasks.length}</b></div>
+      <div class="${calendarState}"><span>DÍA</span><i style="width:${calendarPercent}%"></i><b>${busiest ? dayLabel(busiest[0]).slice(0,3) : "—"}</b></div>
+      <div class="${completionPercent >= 80 ? "state-green" : completionPercent >= 40 ? "state-yellow" : roleTasks.length ? "state-orange" : "state-neutral"}"><span>HEC</span><i style="width:${completionPercent}%"></i><b>${completionPercent}%</b></div>
+    </div>
+    <div class="role-connection-stats"><span>${roleTasks.length} tareas</span><span>${completed} hechas</span><span>${pending} pendientes</span><span>${totalMinutes} min</span><span>${totalWeighted} min pond.</span></div>
+    ${roleTasks.length ? `<div class="role-task-preview">${roleTasks.slice(0,3).map(t => `<button type="button" data-weekly-task-detail="${t.id}"><strong>${escapeHtml(t.title)}</strong><small>${dayLabel(t.assignedDay)} · ${intensityLabel(t.intensity)}</small></button>`).join("")}</div>` : `<div class="calendar-suggestion">Todavía no hay tareas estratégicas generadas. Usa el botón para crear una selección base según disponibilidad y carga.</div>`}
     <button class="primary-btn" data-generate-strategic-tasks="${profile.id}">Generar tareas estratégicas</button>
   </div>`;
 }
@@ -2251,6 +2305,7 @@ function renderProfiles() {
   $$(`[data-edit-availability]`).forEach(btn => btn.addEventListener("click", () => editAvailability(btn.dataset.editAvailability)));
   $$(`[data-profile-info]`).forEach(btn => btn.addEventListener("click", () => openProfileImportance(btn.dataset.profileInfo)));
   $$(`[data-generate-strategic-tasks]`).forEach(btn => btn.addEventListener("click", () => generateStrategicTasks(btn.dataset.generateStrategicTasks)));
+  $$(`[data-weekly-task-detail]`).forEach(btn => btn.addEventListener("click", () => openWeeklyTaskDetail(btn.dataset.weeklyTaskDetail)));
   $$(`[data-calendar-help]`).forEach(btn => btn.addEventListener("click", () => openCalendarHelp(btn.dataset.calendarHelp)));
   $$(`[data-workload-help]`).forEach(btn => btn.addEventListener("click", () => openWorkloadHelp(btn.dataset.workloadHelp)));
   $$(`[data-availability-graph]`).forEach(btn => btn.addEventListener("click", () => openAvailabilityGraph(btn.dataset.availabilityGraph)));
@@ -2280,6 +2335,30 @@ function dayLabel(key) {
   return WEEK_DAYS.find(d => d.key === key)?.label || "Domingo";
 }
 
+
+function openWeeklyTaskDetail(taskId) {
+  const task = (cache.profileWeeklyTasks || []).find(t => t.id === taskId);
+  if (!task) return;
+  const bank = getStrategicBankTask(task);
+  const roleData = roleTaskStatusData(task);
+  openInfoModal({
+    eyebrow: roleData.label,
+    title: task.title || "Tarea del rol",
+    html: `
+      <div class="role-task-detail-hero ${roleData.className}">
+        <div><span class="eyebrow">Dónde cae</span><strong>${dayLabel(task.assignedDay)}</strong><p>${taskMinutes(task)} min reales · ${weightedTaskMinutes(task)} min ponderados · intensidad ${intensityLabel(task.intensity)}</p></div>
+        <div><span class="eyebrow">Estado</span><strong>${taskStatusLabel(task.status)}</strong><p>${task.taskEcosystemEnabled ? "Preparada para ecosistema de tarea futuro." : "Tarea básica."}</p></div>
+      </div>
+      <div class="learning-stack">
+        <div class="learning-box"><span class="eyebrow">Objetivo</span><p>${escapeHtml(bank?.objective || task.description || "Completar esta tarea con evidencia clara para que el sistema pueda medir avance.")}</p></div>
+        <div class="learning-box"><span class="eyebrow">Impacto esperado</span><p>${escapeHtml(task.businessImpact || bank?.businessImpact || "Ayuda a mantener el negocio alineado y evitar trabajo sin dirección.")}</p></div>
+        <div class="learning-box"><span class="eyebrow">Evidencia requerida</span><p>${escapeHtml(task.evidenceRequired || bank?.evidenceRequired || "Resultado, link, decisión o nota de cierre.")}</p></div>
+        <div class="learning-box"><span class="eyebrow">Ecosistema futuro</span><p>Más adelante esta tarea abrirá una pantalla completa con pasos, guía, campos, evidencia, impacto y checklist interno. Por ahora esta ficha deja visible la lógica del rol.</p></div>
+      </div>
+      ${task.notes ? `<h3>Notas guardadas</h3><pre class="task-note-preview">${escapeHtml(task.notes)}</pre>` : ""}
+    `
+  });
+}
 
 async function addProfile() {
   await openRecordModal({
