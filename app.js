@@ -304,22 +304,49 @@ function workloadPercentLabel(percent) {
 }
 
 
-function workloadClassFromPercent(percent) {
+function workloadClassFromPercent(percent, hasData = true) {
+  if (!hasData) return "neutral";
   return percent > 90 ? "saturated" : percent > 70 ? "high" : percent > 45 ? "moderate" : "healthy";
 }
 
-function loadShortStatus(percent) {
+function loadShortStatus(percent, hasData = true) {
+  if (!hasData) return "SIN DATOS";
   if (percent > 90) return "SAT";
   if (percent > 70) return "ALT";
   if (percent > 45) return "MOD";
   return "SAN";
 }
 
+function toneFromAvailability(profile, summary = {}, stats = {}) {
+  const configured = Boolean(profile?.availability?.days);
+  if (!configured) return "neutral";
+  if ((summary.protectedDays || 0) === 0 || Number(summary.maxHours || 3) > 4) return "high";
+  if ((summary.available || 0) + (summary.light || 0) >= 6) return "moderate";
+  return "healthy";
+}
+
+function toneFromWorkload(workload = {}) {
+  const hasData = Boolean((workload.totalPlanned || 0) > 0 || (workload.totalWeighted || 0) > 0);
+  if (!hasData) return "neutral";
+  if ((workload.protectedWithTasks || 0) > 0) return "saturated";
+  if ((workload.saturatedDays || 0) > 0) return "saturated";
+  return workloadClassFromPercent(workload.average || 0, true);
+}
+
+function toneFromPreclose(report = {}) {
+  const hasData = Boolean((report.totalTasks || 0) > 0 || (report.totalPlanned || 0) > 0);
+  if (!hasData) return "neutral";
+  if ((report.protectedWithTasks || 0) > 0 || (report.saturatedDays || 0) > 0) return "saturated";
+  if ((report.daysToClose || 0) <= 2 && (report.pendingRatio || 0) > 50) return "high";
+  if ((report.progressPercent || 0) < 31 && (report.totalTasks || 0) > 0) return "moderate";
+  return workloadClassFromPercent(report.workloadAverage || 0, true);
+}
+
 function metricMiniBar(label, value, max = 100, detail = "", tone = "healthy") {
   const safeMax = Math.max(1, Number(max || 1));
   const numeric = Number(String(value).replace(/[^0-9.]/g, ""));
   const raw = Number.isFinite(numeric) ? numeric : 0;
-  const width = Math.max(0, Math.min(100, Math.round((raw / safeMax) * 100)));
+  const width = tone === "neutral" ? 0 : Math.max(0, Math.min(100, Math.round((raw / safeMax) * 100)));
   return `<div class="mini-metric-row metric-${tone}">
     <div class="mini-metric-label"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></div>
     <div class="mini-metric-track"><i style="width:${width}%"></i></div>
@@ -328,20 +355,22 @@ function metricMiniBar(label, value, max = 100, detail = "", tone = "healthy") {
 }
 
 function availabilityDistributionCard(profile, summary, avStats) {
+  const tone = toneFromAvailability(profile, summary, avStats);
+  const configured = tone !== "neutral";
   const totalDays = Math.max(1, summary.available + summary.light + summary.protectedDays + (avStats.external || 0));
   const segments = [
-    { key: "available", label: "Disponibles", value: summary.available, abbr: "DIS" },
-    { key: "light", label: "Ligeros", value: summary.light, abbr: "LIG" },
-    { key: "protected", label: "Protegidos", value: summary.protectedDays, abbr: "PRO" },
-    { key: "external", label: "Trabajo externo", value: avStats.external || 0, abbr: "EXT" }
+    { key: "available", label: "Disponibles", value: configured ? summary.available : 0, abbr: "DIS" },
+    { key: "light", label: "Ligeros", value: configured ? summary.light : 0, abbr: "LIG" },
+    { key: "protected", label: "Protegidos", value: configured ? summary.protectedDays : 0, abbr: "PRO" },
+    { key: "external", label: "Trabajo externo", value: configured ? (avStats.external || 0) : 0, abbr: "EXT" }
   ];
-  return `<button class="graph-card availability-graph-card" data-availability-graph="${profile.id}" type="button" aria-label="Ver distribución de días de ${escapeAttr(profile.name || "perfil")}">
+  return `<button class="graph-card availability-graph-card graph-${tone}" data-availability-graph="${profile.id}" type="button" aria-label="Ver distribución de días de ${escapeAttr(profile.name || "perfil")}">
     <div class="graph-card-head">
-      <div><span class="eyebrow">Distribución de días</span><strong>${dayLabel(summary.closeDay)}</strong><small>Cierre semanal · máx. ${summary.maxHours || 3} h/día</small></div>
+      <div><span class="eyebrow">Distribución de días</span><strong>${configured ? dayLabel(summary.closeDay) : "Sin datos"}</strong><small>${configured ? `Cierre semanal · máx. ${summary.maxHours || 3} h/día` : "Configura disponibilidad para activar color"}</small></div>
       <span class="graph-open-pill">Ver detalle</span>
     </div>
-    <div class="stacked-day-bar">
-      ${segments.map(seg => `<i class="seg-${seg.key}" style="width:${Math.max(0, Math.round((seg.value / totalDays) * 100))}%" title="${escapeAttr(seg.label)}: ${seg.value}"></i>`).join("")}
+    <div class="stacked-day-bar state-bar state-${tone}">
+      ${segments.map(seg => `<i class="seg-${seg.key}" style="width:${configured ? Math.max(0, Math.round((seg.value / totalDays) * 100)) : 0}%" title="${escapeAttr(seg.label)}: ${seg.value}"></i>`).join("")}
     </div>
     <div class="compact-stat-grid">
       ${segments.slice(0,3).map(seg => `<span><b>${seg.abbr}</b><strong>${seg.value}</strong></span>`).join("")}
@@ -351,13 +380,14 @@ function availabilityDistributionCard(profile, summary, avStats) {
 }
 
 function workloadGraphCard(profile, workload) {
-  const cls = workloadClassFromPercent(workload.average);
-  return `<button class="graph-card workload-graph-card workload-${cls}" data-workload-graph="${profile.id}" type="button" aria-label="Ver carga semanal de ${escapeAttr(profile.name || "perfil")}">
+  const cls = toneFromWorkload(workload);
+  const hasData = cls !== "neutral";
+  return `<button class="graph-card workload-graph-card workload-${cls} graph-${cls}" data-workload-graph="${profile.id}" type="button" aria-label="Ver carga semanal de ${escapeAttr(profile.name || "perfil")}">
     <div class="graph-card-head">
-      <div><span class="eyebrow">Carga semanal visual</span><strong>CPS ${workloadPercentLabel(workload.average)}</strong><small>${loadShortStatus(workload.average)} · toca para ver estadística completa</small></div>
+      <div><span class="eyebrow">Carga semanal visual</span><strong>CPS ${hasData ? workloadPercentLabel(workload.average) : "S/D"}</strong><small>${loadShortStatus(workload.average, hasData)} · toca para ver estadística completa</small></div>
       <span class="graph-open-pill">Abrir gráfica</span>
     </div>
-    <div class="big-load-bar"><i style="width:${Math.min(workload.average, 100)}%"></i></div>
+    <div class="big-load-bar state-bar state-${cls}"><i style="width:${hasData ? Math.min(workload.average, 100) : 0}%"></i></div>
     <div class="compact-stat-grid compact-stat-grid-five">
       <span><b>CPS</b><strong>${workloadPercentLabel(workload.average)}</strong></span>
       <span><b>DMC</b><strong>${workload.highest?.label?.slice(0,3) || "N/A"}</strong></span>
@@ -369,16 +399,19 @@ function workloadGraphCard(profile, workload) {
 }
 
 function precloseGraphCard(profile, report) {
-  const loadCls = workloadClassFromPercent(report.workloadAverage);
-  const progressWidth = report.totalTasks ? report.progressPercent : 0;
-  return `<button class="graph-card preclose-graph-card workload-${loadCls}" data-preclose-graph="${profile.id}" type="button" aria-label="Ver pre-cierre semanal de ${escapeAttr(profile.name || "perfil")}">
+  const loadCls = toneFromPreclose(report);
+  const hasData = loadCls !== "neutral";
+  const progressWidth = hasData && report.totalTasks ? report.progressPercent : 0;
+  const progressTone = !hasData ? "neutral" : (report.progressPercent >= 66 ? "healthy" : report.progressPercent >= 31 ? "moderate" : "high");
+  const workloadTone = toneFromWorkload({ average: report.workloadAverage, totalPlanned: report.totalPlanned, totalWeighted: report.totalWeighted, saturatedDays: report.saturatedDays, protectedWithTasks: report.protectedWithTasks });
+  return `<button class="graph-card preclose-graph-card workload-${loadCls} graph-${loadCls}" data-preclose-graph="${profile.id}" type="button" aria-label="Ver pre-cierre semanal de ${escapeAttr(profile.name || "perfil")}">
     <div class="graph-card-head">
-      <div><span class="eyebrow">Avance y pre-cierre</span><strong>AVS ${report.totalTasks ? `${report.progressPercent}%` : "0%"}</strong><small>${report.completed}/${report.totalTasks} tareas · cierre ${dayLabel(report.closeDay)}</small></div>
+      <div><span class="eyebrow">Avance y pre-cierre</span><strong>AVS ${hasData ? `${report.progressPercent}%` : "S/D"}</strong><small>${hasData ? `${report.completed}/${report.totalTasks} tareas · cierre ${dayLabel(report.closeDay)}` : "Agrega tareas para activar lectura"}</small></div>
       <span class="graph-open-pill">Ver pre-cierre</span>
     </div>
     <div class="dual-graph-bars">
-      <div><span>AVS</span><div class="mini-metric-track"><i style="width:${Math.min(progressWidth, 100)}%"></i></div><b>${progressWidth}%</b></div>
-      <div><span>CPS</span><div class="mini-metric-track load-gradient"><i style="width:${Math.min(report.workloadAverage, 100)}%"></i></div><b>${workloadPercentLabel(report.workloadAverage)}</b></div>
+      <div><span>AVS</span><div class="mini-metric-track state-bar state-${progressTone}"><i style="width:${Math.min(progressWidth, 100)}%"></i></div><b>${hasData ? `${progressWidth}%` : "S/D"}</b></div>
+      <div><span>CPS</span><div class="mini-metric-track state-bar state-${workloadTone}"><i style="width:${hasData ? Math.min(report.workloadAverage, 100) : 0}%"></i></div><b>${hasData ? workloadPercentLabel(report.workloadAverage) : "S/D"}</b></div>
     </div>
     <div class="compact-stat-grid compact-stat-grid-six">
       <span><b>CIE</b><strong>${dayLabel(report.closeDay).slice(0,3)}</strong></span>
@@ -389,6 +422,73 @@ function precloseGraphCard(profile, report) {
       <span><b>TMP</b><strong>${report.totalPlanned}m</strong></span>
     </div>
   </button>`;
+}
+
+
+function pickWorstTone(...tones) {
+  const rank = { neutral: 0, healthy: 1, moderate: 2, high: 3, saturated: 4 };
+  return tones.reduce((worst, tone) => (rank[tone] || 0) > (rank[worst] || 0) ? tone : worst, "neutral");
+}
+
+function roleTone(profile) {
+  const role = String(profile?.primaryRole || "").trim().toLowerCase();
+  if (!role || role === "pendiente" || role === "sin asignar") return "neutral";
+  return "healthy";
+}
+
+function profileOperationsGraphCard(profile) {
+  const availability = normalizeAvailability(profile.availability);
+  const tasks = getProfileWeeklyTasks(profile.id);
+  const avStats = availabilityStats(profile.availability);
+  const summary = weeklyCalendarSummary(profile, tasks);
+  const workload = weeklyWorkloadReport(profile, tasks);
+  const avTone = toneFromAvailability(profile, summary, avStats);
+  const workTone = toneFromWorkload(workload);
+  const rTone = roleTone(profile);
+  const totalTasks = tasks.length;
+  const completed = tasks.filter(t => t.status === "completed").length;
+  const taskTone = !totalTasks ? "neutral" : completed === totalTasks ? "healthy" : completed / totalTasks >= .5 ? "moderate" : "high";
+  const cardTone = pickWorstTone(rTone, avTone, workTone, taskTone);
+  const roleWidth = rTone === "neutral" ? 0 : 100;
+  const availabilityWidth = avTone === "neutral" ? 0 : Math.min(100, Math.round(((summary.available + summary.light) / 7) * 100));
+  const taskWidth = totalTasks ? Math.round((completed / totalTasks) * 100) : 0;
+  return `<section class="profile-compact-panel graph-${cardTone}">
+    <div class="profile-compact-head">
+      <div>
+        <span class="eyebrow">Configuración del perfil</span>
+        <h4>${escapeHtml(profile.name || "Perfil")}</h4>
+        <p>Rol, disponibilidad, calendario y carga semanal comprimidos. Abre esta sección solo cuando necesites ajustar algo.</p>
+      </div>
+      <button class="soft-btn" data-toggle-profile-ops="${profile.id}">Abrir configuración</button>
+    </div>
+    <div class="profile-bars-grid">
+      <div class="profile-line metric-${rTone}"><span>ROL</span><div class="mini-metric-track"><i style="width:${roleWidth}%"></i></div><b>${rTone === "neutral" ? "S/D" : "OK"}</b></div>
+      <div class="profile-line metric-${avTone}"><span>DIS</span><div class="mini-metric-track"><i style="width:${availabilityWidth}%"></i></div><b>${summary.available}/${7}</b></div>
+      <div class="profile-line metric-${workTone}"><span>CPS</span><div class="mini-metric-track"><i style="width:${workTone === "neutral" ? 0 : Math.min(workload.average, 100)}%"></i></div><b>${workTone === "neutral" ? "S/D" : workloadPercentLabel(workload.average)}</b></div>
+      <div class="profile-line metric-${taskTone}"><span>TAR</span><div class="mini-metric-track"><i style="width:${taskWidth}%"></i></div><b>${completed}/${totalTasks}</b></div>
+    </div>
+  </section>`;
+}
+
+function precloseCompactPanel(profile) {
+  const report = weeklyPreCloseReport(profile, getProfileWeeklyTasks(profile.id));
+  const tone = toneFromPreclose(report);
+  return `<section class="profile-compact-panel preclose-compact-panel graph-${tone}">
+    <div class="profile-compact-head">
+      <div>
+        <span class="eyebrow">Cierre semanal</span>
+        <h4>${tone === "neutral" ? "Sin cierre activo" : `AVS ${report.progressPercent}% · CPS ${workloadPercentLabel(report.workloadAverage)}`}</h4>
+        <p>${tone === "neutral" ? "Agrega tareas para activar el pre-cierre." : `${report.completed}/${report.totalTasks} tareas · cierre ${dayLabel(report.closeDay)} · ${report.daysToClose} días restantes.`}</p>
+      </div>
+      <button class="soft-btn" data-toggle-preclose-details="${profile.id}">Abrir cierre</button>
+    </div>
+    <div class="profile-bars-grid">
+      <div class="profile-line metric-${tone === "neutral" ? "neutral" : (report.progressPercent >= 66 ? "healthy" : report.progressPercent >= 31 ? "moderate" : "high")}"><span>AVS</span><div class="mini-metric-track"><i style="width:${tone === "neutral" ? 0 : report.progressPercent}%"></i></div><b>${tone === "neutral" ? "S/D" : `${report.progressPercent}%`}</b></div>
+      <div class="profile-line metric-${toneFromWorkload({ average: report.workloadAverage, totalPlanned: report.totalPlanned, totalWeighted: report.totalWeighted, saturatedDays: report.saturatedDays, protectedWithTasks: report.protectedWithTasks })}"><span>CPS</span><div class="mini-metric-track"><i style="width:${tone === "neutral" ? 0 : Math.min(report.workloadAverage, 100)}%"></i></div><b>${tone === "neutral" ? "S/D" : workloadPercentLabel(report.workloadAverage)}</b></div>
+      <div class="profile-line metric-${report.pending ? "moderate" : tone === "neutral" ? "neutral" : "healthy"}"><span>PEN</span><div class="mini-metric-track"><i style="width:${report.totalTasks ? Math.round((report.pending / report.totalTasks) * 100) : 0}%"></i></div><b>${report.pending}</b></div>
+      <div class="profile-line metric-${report.protectedWithTasks ? "saturated" : tone === "neutral" ? "neutral" : "healthy"}"><span>DES</span><div class="mini-metric-track"><i style="width:${Math.min(100, report.protectedWithTasks * 25)}%"></i></div><b>${report.protectedWithTasks}</b></div>
+    </div>
+  </section>`;
 }
 
 function openAvailabilityGraph(profileId) {
@@ -432,7 +532,7 @@ function openWorkloadGraph(profileId) {
     html: `<div class="modal-graph-detail">
       ${graph}
       <div class="modal-stat-grid">
-        ${metricMiniBar("Carga promedio semanal", `${workloadPercentLabel(workload.average)}`, 100, workload.recommendation, workloadClassFromPercent(workload.average))}
+        ${metricMiniBar("Carga promedio semanal", `${workloadPercentLabel(workload.average)}`, 100, workload.recommendation, workloadClassFromPercent(workload.average, workload.totalPlanned > 0))}
         ${metricMiniBar("Día más cargado", workload.highest?.label || "Sin datos", 100, workload.highest ? `${workloadPercentLabel(workload.highest.workload.percent)} de carga` : "0%", workload.highest?.workload?.status?.key || "healthy")}
         ${metricMiniBar("Días saturados", workload.saturatedDays, 7, "Conviene redistribuir", workload.saturatedDays ? "saturated" : "healthy")}
         ${metricMiniBar("Descanso invadido", workload.protectedWithTasks, 7, "Días protegidos con tareas", workload.protectedWithTasks ? "high" : "healthy")}
@@ -456,7 +556,7 @@ function openPrecloseGraph(profileId) {
       ${graph}
       <div class="modal-stat-grid">
         ${metricMiniBar("Avance semanal", `${report.totalTasks ? report.progressPercent : 0}%`, 100, report.progress.label, report.progress.className?.includes("green") ? "healthy" : report.progress.className?.includes("yellow") ? "moderate" : "high")}
-        ${metricMiniBar("Carga promedio", `${workloadPercentLabel(report.workloadAverage)}`, 100, `${report.saturatedDays} días saturados`, workloadClassFromPercent(report.workloadAverage))}
+        ${metricMiniBar("Carga promedio", `${workloadPercentLabel(report.workloadAverage)}`, 100, `${report.saturatedDays} días saturados`, workloadClassFromPercent(report.workloadAverage, report.totalPlanned > 0))}
         ${metricMiniBar("Tareas completadas", `${report.completed}/${report.totalTasks}`, Math.max(1, report.totalTasks), `${report.pending} pendientes`, report.pending ? "moderate" : "healthy")}
         ${metricMiniBar("Tiempo planificado", `${report.totalPlanned} min`, Math.max(1, report.totalPlanned, 180), `${report.totalWeighted} min ponderados`, "neutral")}
         ${metricMiniBar("Descanso invadido", report.protectedWithTasks, 7, "Días protegidos con tareas", report.protectedWithTasks ? "high" : "healthy")}
@@ -578,7 +678,7 @@ function weeklyPreCloseReport(profile, tasks) {
   return report;
 }
 
-function renderWeeklyPreClose(profile) {
+function renderWeeklyPreClose(profile, includeGraph = true) {
   const tasks = getProfileWeeklyTasks(profile.id);
   const report = weeklyPreCloseReport(profile, tasks);
   const nextPlan = getNextWeekPlan(profile.id);
@@ -603,7 +703,7 @@ function renderWeeklyPreClose(profile) {
         <button class="primary-btn" data-prepare-next-week="${profile.id}">Preparar siguiente semana</button>
       </div>
     </div>
-    ${precloseGraphCard(profile, report)}
+    ${includeGraph ? precloseGraphCard(profile, report) : ""}
     ${closePressure}
     <div class="impact-panel">
       <div><span class="eyebrow">Impacto semanal básico</span><p>Lectura aproximada según tareas manuales, texto y futuras áreas de rol.</p></div>
@@ -1610,24 +1710,30 @@ function renderProfiles() {
         </div>
         <span class="status-pill ${avStats.className}">${avStats.status}</span>
       </div>
-      <div class="profile-detail-grid">
-        <div><span>Rol principal</span><strong>${p.primaryRole || "Pendiente"}</strong></div>
-        <div><span>Subroles</span><strong>${p.subRoles || "Pendientes"}</strong></div>
-      </div>
-      <div class="availability-summary">
-        <div class="availability-head">
-          <div><span class="eyebrow">Disponibilidad semanal</span><strong>Cierre: ${dayLabel(avStats.closeDay)}</strong></div>
-          <span class="badge">Máx. ${avStats.maxHours || 3} h/día</span>
+      ${profileOperationsGraphCard(p)}
+      <div class="profile-collapsible-body" id="profile-ops-${p.id}">
+        <div class="profile-detail-grid">
+          <div><span>Rol principal</span><strong>${p.primaryRole || "Pendiente"}</strong></div>
+          <div><span>Subroles</span><strong>${p.subRoles || "Pendientes"}</strong></div>
         </div>
-        ${availabilityDistributionCard(p, { available: avStats.available, light: avStats.light, protectedDays: avStats.protectedDays, maxHours: avStats.maxHours, closeDay: avStats.closeDay, taskCount: getProfileWeeklyTasks(p.id).length, completed: getProfileWeeklyTasks(p.id).filter(t => t.status === "completed").length }, avStats)}
+        <div class="availability-summary">
+          <div class="availability-head">
+            <div><span class="eyebrow">Disponibilidad semanal</span><strong>Cierre: ${dayLabel(avStats.closeDay)}</strong></div>
+            <span class="badge">Máx. ${avStats.maxHours || 3} h/día</span>
+          </div>
+          ${availabilityDistributionCard(p, { available: avStats.available, light: avStats.light, protectedDays: avStats.protectedDays, maxHours: avStats.maxHours, closeDay: avStats.closeDay, taskCount: getProfileWeeklyTasks(p.id).length, completed: getProfileWeeklyTasks(p.id).filter(t => t.status === "completed").length }, avStats)}
+        </div>
+        ${renderWeeklyCalendar(p)}
+        <p class="profile-notes">${p.notes || "Sin notas todavía. Este espacio debe usarse para límites, responsabilidades y contexto de trabajo."}</p>
+        <div class="small-actions">
+          <button class="soft-btn" data-edit-profile="${p.id}">Editar perfil</button>
+          <button class="soft-btn" data-edit-availability="${p.id}">Disponibilidad semanal</button>
+          <button class="soft-btn" data-profile-info="${p.id}">¿Por qué importa?</button>
+        </div>
       </div>
-      ${renderWeeklyCalendar(p)}
-      ${renderWeeklyPreClose(p)}
-      <p class="profile-notes">${p.notes || "Sin notas todavía. Este espacio debe usarse para límites, responsabilidades y contexto de trabajo."}</p>
-      <div class="small-actions">
-        <button class="soft-btn" data-edit-profile="${p.id}">Editar perfil</button>
-        <button class="soft-btn" data-edit-availability="${p.id}">Disponibilidad semanal</button>
-        <button class="soft-btn" data-profile-info="${p.id}">¿Por qué importa?</button>
+      ${precloseCompactPanel(p)}
+      <div class="profile-collapsible-body" id="profile-preclose-${p.id}">
+        ${renderWeeklyPreClose(p, false)}
       </div>
     </article>`;
   }).join("") : emptyState();
@@ -1652,6 +1758,8 @@ function renderProfiles() {
   $$(`[data-workload-graph]`).forEach(btn => btn.addEventListener("click", () => openWorkloadGraph(btn.dataset.workloadGraph)));
   $$(`[data-preclose-graph]`).forEach(btn => btn.addEventListener("click", () => openPrecloseGraph(btn.dataset.precloseGraph)));
   $$(`[data-preclose-help]`).forEach(btn => btn.addEventListener("click", () => openPreCloseHelp(btn.dataset.precloseHelp)));
+  $$(`[data-toggle-profile-ops]`).forEach(btn => btn.addEventListener("click", () => toggleProfilePanel(`profile-ops-${btn.dataset.toggleProfileOps}`, btn)));
+  $$(`[data-toggle-preclose-details]`).forEach(btn => btn.addEventListener("click", () => toggleProfilePanel(`profile-preclose-${btn.dataset.togglePrecloseDetails}`, btn)));
   $$(`[data-prepare-next-week]`).forEach(btn => btn.addEventListener("click", () => prepareNextWeek(btn.dataset.prepareNextWeek)));
   $$(`[data-add-weekly-task]`).forEach(btn => btn.addEventListener("click", () => {
     const [profileId, dayKey] = btn.dataset.addWeeklyTask.split(":");
@@ -1659,6 +1767,14 @@ function renderProfiles() {
   }));
   $$(`[data-move-weekly-task]`).forEach(btn => btn.addEventListener("click", () => moveWeeklyTask(btn.dataset.moveWeeklyTask)));
   $$(`[data-toggle-weekly-task]`).forEach(btn => btn.addEventListener("click", () => toggleWeeklyTask(btn.dataset.toggleWeeklyTask)));
+}
+
+
+function toggleProfilePanel(id, btn) {
+  const panel = document.getElementById(id);
+  if (!panel) return;
+  const isOpen = panel.classList.toggle("is-open");
+  if (btn) btn.textContent = isOpen ? "Cerrar" : (id.includes("preclose") ? "Abrir cierre" : "Abrir configuración");
 }
 
 function dayLabel(key) {

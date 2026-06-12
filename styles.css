@@ -1257,3 +1257,142 @@ html:not([data-theme="dark"]) .field select{background:#ffffff;border-color:#c8c
   .compact-stat-grid-six { grid-template-columns: 1fr; }
   .dual-graph-bars > div { grid-template-columns: 42px 1fr 50px; }
 }
+
+/* V4.7.2 real state colors for graphs: color diagnoses, not decoration */
+.graph-neutral,
+.workload-neutral {
+  border-color: rgba(145,145,145,.38) !important;
+}
+.graph-neutral .graph-open-pill,
+.workload-neutral .graph-open-pill {
+  color: var(--muted) !important;
+  border-color: rgba(145,145,145,.35) !important;
+}
+.graph-healthy,
+.workload-healthy { border-color: rgba(72,160,102,.48) !important; }
+.graph-moderate,
+.workload-moderate { border-color: rgba(197,163,92,.56) !important; }
+.graph-high,
+.workload-high { border-color: rgba(215,126,55,.64) !important; }
+.graph-saturated,
+.workload-saturated { border-color: rgba(210,76,76,.74) !important; }
+.state-bar i,
+.big-load-bar.state-bar i,
+.mini-metric-track.state-bar i {
+  background: var(--state-color, #777) !important;
+}
+.state-neutral { --state-color: #666; }
+.state-healthy { --state-color: #48a066; }
+.state-moderate { --state-color: #c5a35c; }
+.state-high { --state-color: #d77e37; }
+.state-saturated { --state-color: #d24c4c; }
+.graph-neutral .stacked-day-bar i {
+  background: #666 !important;
+}
+.metric-neutral .mini-metric-track i { background: #666 !important; }
+.metric-healthy .mini-metric-track i { background: #48a066 !important; }
+.metric-moderate .mini-metric-track i { background: #c5a35c !important; }
+.metric-high .mini-metric-track i { background: #d77e37 !important; }
+.metric-saturated .mini-metric-track i { background: #d24c4c !important; }
+/* Override old gradient bars */
+.big-load-bar i,
+.mini-metric-track i {
+  background: #666;
+}
+
+/* V4.7.3 compact profile panels: keep profile focused on future tasks */
+.profile-collapsible-body {
+  display: none;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--panel-soft) 82%, transparent);
+  padding: 14px;
+  gap: 14px;
+}
+.profile-collapsible-body.is-open {
+  display: grid;
+}
+.profile-compact-panel {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 88%, transparent), color-mix(in srgb, var(--panel-soft) 94%, transparent));
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+}
+.profile-compact-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+.profile-compact-head h4 {
+  margin: 4px 0 4px;
+  font-size: clamp(20px, 2.4vw, 28px);
+  letter-spacing: -.035em;
+}
+.profile-compact-head p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.35;
+  font-size: 13px;
+}
+.profile-bars-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.profile-line {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+.profile-line span {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+.profile-line b {
+  color: var(--text);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.preclose-compact-panel {
+  margin-top: 0;
+}
+.profile-compact-panel.graph-neutral {
+  opacity: .96;
+}
+.profile-compact-panel.graph-healthy {
+  box-shadow: inset 0 0 0 1px rgba(72,160,102,.10);
+}
+.profile-compact-panel.graph-moderate {
+  box-shadow: inset 0 0 0 1px rgba(197,163,92,.12);
+}
+.profile-compact-panel.graph-high {
+  box-shadow: inset 0 0 0 1px rgba(215,126,55,.14);
+}
+.profile-compact-panel.graph-saturated {
+  box-shadow: inset 0 0 0 1px rgba(210,76,76,.18);
+}
+.profile-collapsible-body .weekly-calendar,
+.profile-collapsible-body .weekly-preclose {
+  margin-top: 0;
+}
+@media (max-width: 980px) {
+  .profile-bars-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .profile-compact-head { grid-template-columns: 1fr; }
+  .profile-compact-head .soft-btn { width: 100%; }
+  .profile-bars-grid { grid-template-columns: 1fr; }
+  .profile-line { grid-template-columns: 48px 1fr 56px; }
+}
