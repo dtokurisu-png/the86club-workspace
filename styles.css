@@ -1652,3 +1652,63 @@ html:not([data-theme="dark"]) .field select{background:#ffffff;border-color:#c8c
   margin: 16px 0;
 }
 .project-lab-card h4 { margin: 8px 0; }
+
+/* V4.9.1 sidebar category scroll fix */
+.sidebar {
+  overflow: hidden;
+  min-height: 0;
+}
+.nav-categorized {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-right: 0;
+  padding-bottom: 4px;
+}
+.nav-categorized::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+.nav-group {
+  min-height: 0;
+}
+.nav-group-items {
+  min-height: 0;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.nav-group-items::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+.nav-group:not([data-collapsed="true"]) .nav-group-items {
+  max-height: min(245px, 34vh);
+  overflow-y: auto;
+  padding-bottom: 12px;
+  padding-right: 9px;
+  scroll-behavior: smooth;
+}
+.nav-group:not([data-collapsed="true"]) {
+  box-shadow: inset 0 -18px 22px -26px rgba(0,0,0,.48);
+}
+.nav-group .nav-btn {
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.25;
+}
+.sidebar-footer {
+  flex: 0 0 auto;
+}
+@media (max-width: 960px) {
+  .sidebar { overflow: visible; min-height: auto; }
+  .nav-categorized { max-height: none; overflow: visible; }
+  .nav-group:not([data-collapsed="true"]) .nav-group-items { max-height: none; overflow: visible; }
+}
