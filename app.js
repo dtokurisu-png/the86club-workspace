@@ -3,7 +3,7 @@ import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https:/
 import { collection, doc, getDoc, setDoc, addDoc, updateDoc, onSnapshot, serverTimestamp, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 
-// --- THE86 DEBUG PANEL: v4.9.8 real debug bootstrap ---
+// --- THE86 DEBUG PANEL: v4.9.9 deploy proof bootstrap ---
 (function initThe86DebugPanel(){
   if (window.T86Debug && window.T86Debug.__installed) return;
   const entries = [];
@@ -31,7 +31,7 @@ import { collection, doc, getDoc, setDoc, addDoc, updateDoc, onSnapshot, serverT
       collapsed: el.classList.contains('collapsed') || el.dataset?.collapsed === 'true'
     }));
     return {
-      version: '4.9.8-real-debug',
+      version: '4.9.9-deploy-proof',
       url: location.href,
       viewport: { width: innerWidth, height: innerHeight },
       sidebar: sidebar ? {
@@ -96,7 +96,7 @@ import { collection, doc, getDoc, setDoc, addDoc, updateDoc, onSnapshot, serverT
     fab.textContent = 'LOG';
     const panel = document.createElement('section');
     panel.id = 't86DebugPanel';
-    panel.innerHTML = `<div class="t86-debug-head"><div><div class="t86-debug-title">THE86 DEBUG</div><small>v4.9.8 real debug</small></div><button type="button" id="t86DebugClose">Cerrar</button></div><div class="t86-debug-actions"><button type="button" id="t86DebugDiag">Diagnóstico sidebar</button><button type="button" id="t86DebugCopy">Copiar log</button><button type="button" id="t86DebugDownload">Descargar JSON</button><button type="button" id="t86DebugClear">Limpiar</button></div><div id="t86DebugEntries"></div>`;
+    panel.innerHTML = `<div class="t86-debug-head"><div><div class="t86-debug-title">THE86 DEBUG</div><small>v4.9.9 deploy proof</small></div><button type="button" id="t86DebugClose">Cerrar</button></div><div class="t86-debug-actions"><button type="button" id="t86DebugDiag">Diagnóstico sidebar</button><button type="button" id="t86DebugCopy">Copiar log</button><button type="button" id="t86DebugDownload">Descargar JSON</button><button type="button" id="t86DebugClear">Limpiar</button></div><div id="t86DebugEntries"></div>`;
     const stamp = document.createElement('div');
     stamp.className = 't86-version-stamp';
     stamp.textContent = 'v4.9.8';

@@ -93,6 +93,43 @@
   </style>
 </head>
 <body>
+
+  <!-- V4.9.9 deploy proof debug: visible even if app.js fails -->
+  <div id="deployProof499" style="position:fixed;left:12px;top:12px;z-index:2147483647;background:#111;color:#f7d37a;border:2px solid #d4af37;border-radius:999px;padding:9px 12px;font:900 12px Arial,sans-serif;letter-spacing:.08em;box-shadow:0 10px 35px rgba(0,0,0,.45);">V4.9.9 CARGADA</div>
+  <button id="hardLog499" type="button" style="position:fixed;right:14px;bottom:14px;z-index:2147483647;background:#d4af37;color:#111;border:2px solid #111;border-radius:999px;padding:12px 14px;font:900 13px Arial,sans-serif;letter-spacing:.1em;box-shadow:0 12px 40px rgba(0,0,0,.45);cursor:pointer;">LOG HARD</button>
+  <section id="hardLogPanel499" style="display:none;position:fixed;right:14px;bottom:72px;width:min(760px,calc(100vw - 28px));height:min(620px,calc(100vh - 100px));z-index:2147483646;background:#0b0b0b;color:#f2eadc;border:2px solid #d4af37;border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.6);overflow:hidden;font-family:Arial,sans-serif;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(212,175,55,.35);">
+      <strong style="color:#f7d37a;">THE86 HARD DEBUG · V4.9.9</strong>
+      <button id="hardLogClose499" type="button" style="background:#222;color:#fff;border:1px solid #555;border-radius:10px;padding:8px 10px;cursor:pointer;">Cerrar</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;border-bottom:1px solid rgba(212,175,55,.2);">
+      <button id="hardDiag499" type="button" style="background:#1c1c1c;color:#f7d37a;border:1px solid #d4af37;border-radius:10px;padding:8px 10px;cursor:pointer;">Diagnóstico sidebar</button>
+      <button id="hardCopy499" type="button" style="background:#1c1c1c;color:#f7d37a;border:1px solid #d4af37;border-radius:10px;padding:8px 10px;cursor:pointer;">Copiar</button>
+    </div>
+    <pre id="hardOut499" style="height:calc(100% - 104px);margin:0;padding:12px;overflow:auto;white-space:pre-wrap;font:12px/1.45 Consolas,monospace;color:#ddd;">Panel hard debug listo. Dale a Diagnóstico sidebar.</pre>
+  </section>
+  <script>
+    (function(){
+      function rect(el){ if(!el) return null; var r=el.getBoundingClientRect(); return {x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height),top:Math.round(r.top),bottom:Math.round(r.bottom)}; }
+      function style(el){ if(!el) return null; var s=getComputedStyle(el); return {display:s.display,position:s.position,height:s.height,maxHeight:s.maxHeight,overflow:s.overflow,overflowY:s.overflowY,flex:s.flex,gridTemplateRows:s.gridTemplateRows}; }
+      function collect(){
+        var sidebar=document.querySelector('.sidebar');
+        var rail=document.querySelector('.sidebar-nav-scroll');
+        var nav=document.querySelector('.nav-categorized');
+        var groups=[].slice.call(document.querySelectorAll('.nav-group')).map(function(g){ var items=g.querySelector('.nav-group-items'); return {name:g.dataset.navGroup, collapsed:g.dataset.collapsed, rect:rect(g), style:style(g), itemsRect:rect(items), itemsStyle:style(items), buttons:items?[].slice.call(items.querySelectorAll('.nav-btn')).map(function(b){return {text:b.textContent.trim(), rect:rect(b)}}):[]}; });
+        return {version:'4.9.9-deploy-proof', time:new Date().toISOString(), url:location.href, viewport:{w:innerWidth,h:innerHeight}, body:{scrollHeight:document.body.scrollHeight,clientHeight:document.body.clientHeight}, sidebar:{rect:rect(sidebar), scrollHeight:sidebar&&sidebar.scrollHeight, clientHeight:sidebar&&sidebar.clientHeight, style:style(sidebar)}, rail:{rect:rect(rail), scrollTop:rail&&rail.scrollTop, scrollHeight:rail&&rail.scrollHeight, clientHeight:rail&&rail.clientHeight, canScroll:rail?rail.scrollHeight>rail.clientHeight:null, style:style(rail)}, nav:{rect:rect(nav), scrollHeight:nav&&nav.scrollHeight, clientHeight:nav&&nav.clientHeight, style:style(nav)}, groups:groups};
+      }
+      function show(obj){ document.getElementById('hardOut499').textContent=JSON.stringify(obj,null,2); }
+      window.addEventListener('DOMContentLoaded',function(){
+        var btn=document.getElementById('hardLog499'), panel=document.getElementById('hardLogPanel499'), close=document.getElementById('hardLogClose499'), diag=document.getElementById('hardDiag499'), copy=document.getElementById('hardCopy499');
+        btn.onclick=function(){ panel.style.display=panel.style.display==='none'?'block':'none'; };
+        close.onclick=function(){ panel.style.display='none'; };
+        diag.onclick=function(){ show(collect()); };
+        copy.onclick=function(){ var txt=document.getElementById('hardOut499').textContent; navigator.clipboard.writeText(txt).then(function(){ document.getElementById('hardOut499').textContent=txt+'\n\nCOPIADO'; }).catch(function(e){ document.getElementById('hardOut499').textContent=txt+'\n\nNO SE PUDO COPIAR: '+e.message; }); };
+      });
+    })();
+  </script>
+
   <div id="appShell" class="shell">
     <aside class="sidebar">
       <div class="sidebar-head">
@@ -279,7 +316,7 @@
 
   <script>
     (function () {
-      const VERSION = '4.9.7-debug';
+      const VERSION = '4.9.9-deploy-proof';
       const logs = [];
       function safeText(value) {
         try { return typeof value === 'string' ? value : JSON.stringify(value, null, 2); }
@@ -391,6 +428,6 @@
     })();
   </script>
 
-  <script type="module" src="./app.js?v=498"></script>
+  <script type="module" src="./app.js?v=499"></script>
 </body>
 </html>
