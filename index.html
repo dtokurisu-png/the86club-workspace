@@ -258,6 +258,139 @@
     </div>
   </template>
 
-  <script type="module" src="./app.js?v=496"></script>
+
+  <button id="debugToggle" class="debug-toggle" type="button" title="Abrir log de depuración">LOG</button>
+  <section id="debugPanel" class="debug-panel hidden" aria-label="Panel de depuración">
+    <header class="debug-panel-head">
+      <div>
+        <strong>Debug The 86 Club</strong>
+        <small>Úsalo para copiarme errores reales del navegador.</small>
+      </div>
+      <button id="debugClose" type="button">×</button>
+    </header>
+    <div class="debug-actions">
+      <button id="debugSidebar" type="button">Diagnóstico sidebar</button>
+      <button id="debugCopy" type="button">Copiar log</button>
+      <button id="debugDownload" type="button">Descargar JSON</button>
+      <button id="debugClear" type="button">Limpiar</button>
+    </div>
+    <pre id="debugOutput">Esperando eventos...</pre>
+  </section>
+
+  <script>
+    (function () {
+      const VERSION = '4.9.7-debug';
+      const logs = [];
+      function safeText(value) {
+        try { return typeof value === 'string' ? value : JSON.stringify(value, null, 2); }
+        catch (err) { return String(value); }
+      }
+      function push(level, message, data) {
+        const item = {
+          time: new Date().toISOString(),
+          level,
+          message: String(message || ''),
+          data: data === undefined ? null : data,
+          url: location.href,
+          viewport: { w: window.innerWidth, h: window.innerHeight }
+        };
+        logs.push(item);
+        if (logs.length > 250) logs.shift();
+        render();
+        return item;
+      }
+      function collectSidebar() {
+        const sidebar = document.querySelector('.sidebar');
+        const rail = document.querySelector('.sidebar-nav-scroll');
+        const nav = document.querySelector('.nav-categorized');
+        const groups = Array.from(document.querySelectorAll('.nav-group')).map((g) => {
+          const items = g.querySelector('.nav-group-items');
+          const toggle = g.querySelector('[data-nav-group-toggle]');
+          const cs = getComputedStyle(g);
+          const is = items ? getComputedStyle(items) : null;
+          return {
+            group: g.dataset.navGroup,
+            collapsed: g.dataset.collapsed,
+            expanded: toggle ? toggle.getAttribute('aria-expanded') : null,
+            groupRect: rect(g),
+            groupStyle: { display: cs.display, height: cs.height, maxHeight: cs.maxHeight, overflow: cs.overflow, flex: cs.flex },
+            itemsRect: items ? rect(items) : null,
+            itemsStyle: is ? { display: is.display, height: is.height, maxHeight: is.maxHeight, overflow: is.overflow, gridTemplateRows: is.gridTemplateRows } : null,
+            itemCount: items ? items.querySelectorAll('.nav-btn').length : 0
+          };
+        });
+        return {
+          version: VERSION,
+          body: { scrollHeight: document.body.scrollHeight, clientHeight: document.body.clientHeight },
+          sidebar: sidebar ? { rect: rect(sidebar), scrollHeight: sidebar.scrollHeight, clientHeight: sidebar.clientHeight, style: pickStyle(sidebar) } : null,
+          rail: rail ? { rect: rect(rail), scrollTop: rail.scrollTop, scrollHeight: rail.scrollHeight, clientHeight: rail.clientHeight, canScroll: rail.scrollHeight > rail.clientHeight, style: pickStyle(rail) } : null,
+          nav: nav ? { rect: rect(nav), scrollHeight: nav.scrollHeight, clientHeight: nav.clientHeight, style: pickStyle(nav) } : null,
+          groups
+        };
+      }
+      function rect(el) {
+        const r = el.getBoundingClientRect();
+        return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height), top: Math.round(r.top), bottom: Math.round(r.bottom) };
+      }
+      function pickStyle(el) {
+        const s = getComputedStyle(el);
+        return { display: s.display, height: s.height, maxHeight: s.maxHeight, overflow: s.overflow, overflowY: s.overflowY, gridTemplateRows: s.gridTemplateRows, position: s.position };
+      }
+      function render() {
+        const out = document.getElementById('debugOutput');
+        if (!out) return;
+        const latest = logs.slice(-40).map((l) => `[${l.time}] ${l.level.toUpperCase()} — ${l.message}${l.data ? '\n' + safeText(l.data) : ''}`).join('\n\n');
+        out.textContent = latest || 'Sin eventos todavía.';
+      }
+      function download() {
+        const payload = { version: VERSION, generatedAt: new Date().toISOString(), logs, sidebar: collectSidebar(), localStorage: { theme: localStorage.getItem('the86_theme'), view: localStorage.getItem('the86_view') } };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'the86club-debug-log.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+      async function copyLog() {
+        const payload = JSON.stringify({ version: VERSION, generatedAt: new Date().toISOString(), logs, sidebar: collectSidebar() }, null, 2);
+        try { await navigator.clipboard.writeText(payload); push('info', 'Log copiado al portapapeles.'); }
+        catch (err) { push('error', 'No se pudo copiar el log.', { message: err.message }); }
+      }
+      window.T86Debug = {
+        version: VERSION,
+        logs,
+        log: (message, data) => push('info', message, data),
+        warn: (message, data) => push('warn', message, data),
+        error: (message, data) => push('error', message, data),
+        sidebar: () => push('info', 'Diagnóstico sidebar', collectSidebar()),
+        collectSidebar,
+        download,
+        copyLog
+      };
+      window.addEventListener('error', (event) => push('error', event.message || 'window.error', { filename: event.filename, lineno: event.lineno, colno: event.colno, stack: event.error && event.error.stack }));
+      window.addEventListener('unhandledrejection', (event) => push('error', 'unhandledrejection', { reason: event.reason && (event.reason.stack || event.reason.message || String(event.reason)) }));
+      document.addEventListener('DOMContentLoaded', () => {
+        const panel = document.getElementById('debugPanel');
+        const toggle = document.getElementById('debugToggle');
+        const close = document.getElementById('debugClose');
+        const sidebar = document.getElementById('debugSidebar');
+        const copy = document.getElementById('debugCopy');
+        const down = document.getElementById('debugDownload');
+        const clear = document.getElementById('debugClear');
+        if (toggle && panel) toggle.addEventListener('click', () => panel.classList.toggle('hidden'));
+        if (close && panel) close.addEventListener('click', () => panel.classList.add('hidden'));
+        if (sidebar) sidebar.addEventListener('click', () => window.T86Debug.sidebar());
+        if (copy) copy.addEventListener('click', copyLog);
+        if (down) down.addEventListener('click', download);
+        if (clear) clear.addEventListener('click', () => { logs.length = 0; render(); });
+        document.addEventListener('keydown', (event) => {
+          if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 'd') panel?.classList.toggle('hidden');
+        });
+        push('info', 'Debug listo', { version: VERSION });
+      });
+    })();
+  </script>
+
+  <script type="module" src="./app.js?v=497"></script>
 </body>
 </html>

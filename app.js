@@ -8,10 +8,14 @@ const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 let currentUser = null;
 let bootError = null;
 let unsubscribers = [];
+const debugLog = (message, data) => window.T86Debug?.log?.(message, data);
+const debugWarn = (message, data) => window.T86Debug?.warn?.(message, data);
+const debugError = (message, data) => window.T86Debug?.error?.(message, data);
 
 window.addEventListener("error", (event) => {
   bootError = event.message || "Error desconocido";
   console.error("The86 workspace error:", event.error || event.message);
+  debugError("The86 workspace error", { message: event.message, stack: event.error?.stack });
   const loginError = document.querySelector("#loginError");
   if (loginError) loginError.textContent = `Error de carga: ${bootError}`;
 });
@@ -19,6 +23,7 @@ window.addEventListener("error", (event) => {
 window.addEventListener("unhandledrejection", (event) => {
   bootError = event.reason?.message || String(event.reason || "Error desconocido");
   console.error("The86 workspace promise error:", event.reason);
+  debugError("The86 workspace promise error", { reason: event.reason?.stack || event.reason?.message || String(event.reason) });
   const loginError = document.querySelector("#loginError");
   if (loginError) loginError.textContent = `Error de conexión/carga: ${bootError}`;
 });
@@ -917,6 +922,7 @@ if (settingsToggleBtn && settingsMenu) {
     const isHidden = settingsMenu.classList.contains("hidden");
     settingsMenu.classList.toggle("hidden", !isHidden);
     settingsToggleBtn.setAttribute("aria-expanded", isHidden ? "true" : "false");
+    debugLog("Settings toggle", { open: isHidden });
   });
   document.addEventListener("click", (event) => {
     if (!event.target.closest(".sidebar-settings-wrap")) {
@@ -931,9 +937,11 @@ $("#loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   $("#loginError").textContent = "";
   try {
+    debugLog("Intentando login", { email: $("#loginEmail").value.trim() });
     await signInWithEmailAndPassword(auth, $("#loginEmail").value.trim(), $("#loginPassword").value);
   } catch (err) {
     console.error("Login error", err);
+    debugError("Login error", { code: err?.code, message: err?.message });
     $("#loginError").textContent = `No se pudo iniciar sesión: ${err?.code || err?.message || "revisa correo, contraseña o dominio autorizado"}.`;
   }
 });
@@ -944,6 +952,7 @@ if (signOutButton) signOutButton.addEventListener("click", () => signOut(auth));
 onAuthStateChanged(auth, async (user) => {
   try {
     currentUser = user;
+    debugLog("Auth state changed", { loggedIn: !!user, email: user?.email || null });
     unsubscribers.forEach(fn => fn());
     unsubscribers = [];
     if (!user) {
@@ -1058,12 +1067,14 @@ function subscribeAll() {
 
 function initSidebarWheelScroll() {
   const rail = document.querySelector('.sidebar-nav-scroll');
+  debugLog("Init sidebar wheel scroll", window.T86Debug?.collectSidebar?.());
   if (!rail || rail.dataset.wheelScrollReady === 'true') return;
   rail.dataset.wheelScrollReady = 'true';
   rail.addEventListener('wheel', (event) => {
     const before = rail.scrollTop;
     rail.scrollTop += event.deltaY;
-    if (rail.scrollTop !== before) event.preventDefault();
+    if (rail.scrollTop !== before) { event.preventDefault(); debugLog("Sidebar wheel scrolled", { before, after: rail.scrollTop, deltaY: event.deltaY, scrollHeight: rail.scrollHeight, clientHeight: rail.clientHeight }); }
+    else { debugWarn("Sidebar wheel did not move", { before, deltaY: event.deltaY, scrollHeight: rail.scrollHeight, clientHeight: rail.clientHeight }); }
   }, { passive: false });
 }
 
@@ -1079,6 +1090,7 @@ function initNavigation() {
     toggle.addEventListener("click", () => {
       const isCollapsed = group.dataset.collapsed === "true";
       setNavGroupCollapsed(group, !isCollapsed, true);
+      debugLog("Nav group toggled", { groupId, collapsedAfter: !isCollapsed, sidebar: window.T86Debug?.collectSidebar?.() });
     });
   });
 }
@@ -1091,6 +1103,7 @@ function setNavGroupCollapsed(group, collapsed, persist = false) {
   if (toggle) toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
   if (chevron) chevron.textContent = collapsed ? "▸" : "▾";
   if (persist) localStorage.setItem(`the86_nav_group_${group.dataset.navGroup}`, collapsed ? "closed" : "open");
+  debugLog("Set nav group collapsed", { group: group.dataset.navGroup, collapsed });
 }
 
 function openGroupForView(view) {
@@ -1107,6 +1120,7 @@ function switchView(view) {
   $("#currentViewEyebrow").textContent = viewTitles[view] || view;
   localStorage.setItem("the86_view", view);
   openGroupForView(view);
+  debugLog("Switch view", { view, sidebar: window.T86Debug?.collectSidebar?.() });
   if (view === "roles") {
     renderRoles();
   }
