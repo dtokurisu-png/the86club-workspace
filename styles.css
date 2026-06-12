@@ -550,3 +550,95 @@ html:not([data-theme="dark"]) .field select{background:#ffffff;border-color:#c8c
   .profile-top .status-pill { grid-column: 1 / -1; width: fit-content; }
   .profile-detail-grid { grid-template-columns: 1fr; }
 }
+
+/* V4.4 weekly availability profiles */
+.availability-intro {
+  margin-bottom: 14px;
+  background: linear-gradient(135deg, var(--accent-soft), var(--panel));
+}
+.availability-intro h3 { margin: 8px 0 6px; font-size: 24px; letter-spacing: -.02em; }
+.availability-summary {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel-soft);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+.availability-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+}
+.availability-head strong { display:block; margin-top:4px; }
+.availability-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.availability-metrics span {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  padding: 9px 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.availability-metrics b { display:block; color: var(--text); font-size: 20px; line-height:1; margin-bottom: 4px; }
+.availability-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+.availability-day {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 8px 6px;
+  display: grid;
+  gap: 4px;
+  min-height: 64px;
+}
+.availability-day b { color: var(--text); font-size: 12px; }
+.availability-day small { color: var(--muted); font-size: 10px; line-height: 1.15; }
+.availability-day.day-available { border-color: rgba(72,160,102,.45); background: rgba(72,160,102,.10); }
+.availability-day.day-mixed { border-color: rgba(197,163,92,.45); background: var(--accent-soft); }
+.availability-day.day-light { border-color: rgba(120,150,190,.45); background: rgba(120,150,190,.12); }
+.availability-day.day-protected { border-color: rgba(160,160,160,.35); background: color-mix(in srgb, var(--panel) 70%, var(--panel-soft)); opacity:.82; }
+.availability-day.day-external { border-color: var(--line); background: var(--panel); opacity:.74; }
+.availability-modal .record-modal { width: min(1040px, 96vw); }
+.availability-why { margin-bottom: 18px; }
+.availability-editor {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+}
+.availability-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 170px;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel-soft);
+  padding: 12px;
+}
+.availability-row-title strong { display:block; color: var(--text); }
+.availability-row-title small { color: var(--muted); display:block; margin-top:3px; }
+.availability-row select,
+.availability-row input {
+  background: var(--input);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 11px;
+  color: var(--text);
+}
+@media (max-width: 880px) {
+  .availability-days { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .availability-metrics { grid-template-columns: 1fr; }
+  .availability-head { align-items: flex-start; flex-direction: column; }
+  .availability-row { grid-template-columns: 1fr; }
+}

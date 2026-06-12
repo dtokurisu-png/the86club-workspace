@@ -84,8 +84,9 @@ const PROFILE_SEEDS = [
     avatarUrl: "",
     primaryRole: "Pendiente",
     subRoles: "",
-    weeklyLoadStatus: "Sin evaluar",
-    notes: "Perfil base para dirección y operación de The 86 Club. Completar con rol principal y límites de trabajo."
+    weeklyLoadStatus: "Sin configurar",
+    availability: defaultAvailability(),
+    notes: "Perfil base para dirección y operación de The 86 Club. Completar con rol principal, disponibilidad semanal y límites de trabajo."
   },
   {
     id: "adrian",
@@ -94,8 +95,9 @@ const PROFILE_SEEDS = [
     avatarUrl: "",
     primaryRole: "Pendiente",
     subRoles: "",
-    weeklyLoadStatus: "Sin evaluar",
-    notes: "Perfil base para definir responsabilidades, ritmo creativo y participación dentro del sistema."
+    weeklyLoadStatus: "Sin configurar",
+    availability: defaultAvailability(),
+    notes: "Perfil base para definir responsabilidades, disponibilidad semanal, ritmo creativo y participación dentro del sistema."
   }
 ];
 
@@ -172,6 +174,82 @@ function workspaceCol(...parts) { return collection(db, ...workspacePath, ...par
 function money(n) { return `$${Number(n || 0).toFixed(2)}`; }
 function num(n) { return Number(n || 0); }
 function pct(n) { return `${Number(n || 0).toFixed(1)}%`; }
+
+
+const WEEK_DAYS = [
+  { key: "monday", label: "Lunes" },
+  { key: "tuesday", label: "Martes" },
+  { key: "wednesday", label: "Miércoles" },
+  { key: "thursday", label: "Jueves" },
+  { key: "friday", label: "Viernes" },
+  { key: "saturday", label: "Sábado" },
+  { key: "sunday", label: "Domingo" }
+];
+
+const DAY_MODE_OPTIONS = [
+  { value: "external_only", label: "Trabajo externo", capacity: "baja" },
+  { value: "external_plus_business", label: "Trabajo externo + The 86 Club", capacity: "media" },
+  { value: "business_available", label: "Disponible para The 86 Club", capacity: "normal" },
+  { value: "light", label: "Día ligero", capacity: "suave" },
+  { value: "protected", label: "Día protegido de descanso", capacity: "descanso" }
+];
+
+function defaultAvailability() {
+  return {
+    weeklyCloseDay: "sunday",
+    maxDailyBusinessHours: 3,
+    notes: "",
+    days: WEEK_DAYS.reduce((acc, d) => {
+      acc[d.key] = { mode: d.key === "sunday" ? "protected" : "external_plus_business", customHours: "" };
+      return acc;
+    }, {})
+  };
+}
+
+function normalizeAvailability(availability = {}) {
+  const base = defaultAvailability();
+  const out = {
+    weeklyCloseDay: availability.weeklyCloseDay || base.weeklyCloseDay,
+    maxDailyBusinessHours: Number(availability.maxDailyBusinessHours || base.maxDailyBusinessHours || 3),
+    notes: availability.notes || "",
+    days: { ...base.days }
+  };
+  WEEK_DAYS.forEach(d => {
+    out.days[d.key] = {
+      ...base.days[d.key],
+      ...(availability.days?.[d.key] || {})
+    };
+  });
+  return out;
+}
+
+function dayModeLabel(mode) {
+  return DAY_MODE_OPTIONS.find(o => o.value === mode)?.label || "Sin definir";
+}
+
+function availabilityStats(availability = {}) {
+  const av = normalizeAvailability(availability);
+  const values = WEEK_DAYS.map(d => av.days[d.key]?.mode || "external_plus_business");
+  const available = values.filter(v => v === "business_available" || v === "external_plus_business").length;
+  const light = values.filter(v => v === "light").length;
+  const protectedDays = values.filter(v => v === "protected").length;
+  const external = values.filter(v => v === "external_only" || v === "external_plus_business").length;
+  const maxHours = Number(av.maxDailyBusinessHours || 0);
+  let status = "Disponibilidad sana";
+  let className = "status-green";
+  if (!availability || !availability.days) { status = "Sin configurar"; className = "status-neutral"; }
+  else if (available < 2 && light < 2) { status = "Disponibilidad limitada"; className = "status-yellow"; }
+  else if (available + light >= 6 || maxHours > 4 || protectedDays === 0) { status = "Riesgo de sobrecarga"; className = "status-red"; }
+  return { available, light, protectedDays, external, maxHours, closeDay: av.weeklyCloseDay, status, className };
+}
+
+function dayStateClass(mode) {
+  if (mode === "protected") return "day-protected";
+  if (mode === "light") return "day-light";
+  if (mode === "business_available") return "day-available";
+  if (mode === "external_plus_business") return "day-mixed";
+  return "day-external";
+}
 
 function setTheme(theme) {
   document.documentElement.dataset.theme = theme;
@@ -953,9 +1031,15 @@ function renderProfiles() {
   if (!container) return;
   const profiles = cache.profiles || [];
   const list = profiles.length ? profiles.map(p => {
+    const availability = normalizeAvailability(p.availability);
+    const avStats = availabilityStats(p.availability);
     const avatar = p.avatarUrl
       ? `<div class="profile-avatar image-avatar"><img src="${escapeAttr(p.avatarUrl)}" alt="Avatar de ${escapeAttr(p.name || "perfil")}" /></div>`
       : `<div class="profile-avatar">${String(p.name || "?").trim().slice(0,1).toUpperCase()}</div>`;
+    const dayChips = WEEK_DAYS.map(d => {
+      const mode = availability.days[d.key]?.mode || "external_plus_business";
+      return `<span class="availability-day ${dayStateClass(mode)}"><b>${d.label.slice(0,3)}</b><small>${dayModeLabel(mode)}</small></span>`;
+    }).join("");
     return `<article class="profile-card">
       <div class="profile-top">
         ${avatar}
@@ -964,29 +1048,53 @@ function renderProfiles() {
           <h3>${p.name || "Perfil sin nombre"}</h3>
           <p>${p.email || "Correo pendiente"}</p>
         </div>
-        <span class="status-pill ${profileStatusClass(p.weeklyLoadStatus)}">${p.weeklyLoadStatus || "Sin evaluar"}</span>
+        <span class="status-pill ${avStats.className}">${avStats.status}</span>
       </div>
       <div class="profile-detail-grid">
         <div><span>Rol principal</span><strong>${p.primaryRole || "Pendiente"}</strong></div>
         <div><span>Subroles</span><strong>${p.subRoles || "Pendientes"}</strong></div>
       </div>
+      <div class="availability-summary">
+        <div class="availability-head">
+          <div><span class="eyebrow">Disponibilidad semanal</span><strong>Cierre: ${dayLabel(avStats.closeDay)}</strong></div>
+          <span class="badge">Máx. ${avStats.maxHours || 3} h/día</span>
+        </div>
+        <div class="availability-metrics">
+          <span><b>${avStats.available}</b> días disponibles</span>
+          <span><b>${avStats.light}</b> días ligeros</span>
+          <span><b>${avStats.protectedDays}</b> días protegidos</span>
+        </div>
+        <div class="availability-days">${dayChips}</div>
+      </div>
       <p class="profile-notes">${p.notes || "Sin notas todavía. Este espacio debe usarse para límites, responsabilidades y contexto de trabajo."}</p>
       <div class="small-actions">
         <button class="soft-btn" data-edit-profile="${p.id}">Editar perfil</button>
+        <button class="soft-btn" data-edit-availability="${p.id}">Disponibilidad semanal</button>
         <button class="soft-btn" data-profile-info="${p.id}">¿Por qué importa?</button>
       </div>
     </article>`;
   }).join("") : emptyState();
 
   container.innerHTML = `
-    <div class="notice learning-notice"><strong>Perfiles no son contactos:</strong> son centros de responsabilidad. Aquí se define quién participa en The 86 Club, qué debe cuidar, qué rol principal sostiene y qué límites necesita para no desequilibrar el negocio.</div>
+    <div class="notice learning-notice"><strong>Perfiles no son contactos:</strong> son centros de responsabilidad. Aquí se define quién participa en The 86 Club, qué debe cuidar, qué disponibilidad real tiene y qué límites necesita para no desequilibrar el negocio.</div>
+    <div class="availability-intro card">
+      <span class="eyebrow">Nueva base de planificación</span>
+      <h3>Disponibilidad semanal antes de tareas</h3>
+      <p>Antes de asignar roles y tareas, el sistema necesita saber cuándo puede trabajar cada persona, qué días deben protegerse y cuántas horas diarias son sanas para avanzar sin convertir el negocio en una segunda jornada completa.</p>
+    </div>
     <div class="toolbar"><button class="primary-btn" id="addProfile">Agregar perfil</button></div>
     <div class="profile-grid">${list}</div>`;
 
   $("#addProfile")?.addEventListener("click", addProfile);
   $$(`[data-edit-profile]`).forEach(btn => btn.addEventListener("click", () => editProfile(btn.dataset.editProfile)));
+  $$(`[data-edit-availability]`).forEach(btn => btn.addEventListener("click", () => editAvailability(btn.dataset.editAvailability)));
   $$(`[data-profile-info]`).forEach(btn => btn.addEventListener("click", () => openProfileImportance(btn.dataset.profileInfo)));
 }
+
+function dayLabel(key) {
+  return WEEK_DAYS.find(d => d.key === key)?.label || "Domingo";
+}
+
 
 async function addProfile() {
   await openRecordModal({
@@ -1015,6 +1123,78 @@ async function editProfile(id) {
   });
 }
 
+async function editAvailability(id) {
+  const profile = (cache.profiles || []).find(x => x.id === id);
+  if (!profile) return;
+  const root = ensureModalRoot();
+  const availability = normalizeAvailability(profile.availability);
+  root.innerHTML = `
+    <div class="modal-backdrop" role="dialog" aria-modal="true">
+      <div class="record-modal availability-modal">
+        <div class="modal-header">
+          <div><span class="eyebrow">Disponibilidad semanal</span><h2>${profile.name || "Perfil"}</h2></div>
+          <button class="icon-btn" data-modal-close aria-label="Cerrar">×</button>
+        </div>
+        <form id="availabilityForm" class="modal-form">
+          <div class="learning-box availability-why">
+            <span class="eyebrow">Por qué importa esta configuración</span>
+            <p>Esta base evita planificar como si The 86 Club fuera un empleo de tiempo completo. Primero se protege la vida real: trabajo externo, descanso, energía disponible y un máximo sano de horas. Después los roles podrán generar tareas sin saturar a Christopher ni a Adrián.</p>
+          </div>
+          <div class="form-grid">
+            <label class="field">
+              <div class="field-label-box"><span>Máximo recomendado diario</span><b class="required-mark">Base 3 h</b></div>
+              <div class="field-input-box"><input name="maxDailyBusinessHours" type="number" min="0" step="0.5" value="${escapeAttr(availability.maxDailyBusinessHours)}" /></div>
+            </label>
+            <label class="field">
+              <div class="field-label-box"><span>Día de cierre semanal</span><b class="required-mark">Requerido</b></div>
+              <div class="field-input-box"><select name="weeklyCloseDay">${WEEK_DAYS.map(d => `<option value="${d.key}" ${availability.weeklyCloseDay === d.key ? "selected" : ""}>${d.label}</option>`).join("")}</select></div>
+            </label>
+          </div>
+          <div class="availability-editor">
+            ${WEEK_DAYS.map(d => {
+              const day = availability.days[d.key] || {};
+              return `<div class="availability-row">
+                <div class="availability-row-title"><strong>${d.label}</strong><small>Define cómo debe tratar el sistema este día.</small></div>
+                <select name="day_${d.key}_mode">${DAY_MODE_OPTIONS.map(o => `<option value="${o.value}" ${day.mode === o.value ? "selected" : ""}>${o.label}</option>`).join("")}</select>
+                <input name="day_${d.key}_hours" type="number" min="0" step="0.5" placeholder="Horas opcionales" value="${escapeAttr(day.customHours || "")}" />
+              </div>`;
+            }).join("")}
+          </div>
+          <label class="field full">
+            <div class="field-label-box"><span>Notas de disponibilidad</span></div>
+            <div class="field-input-box"><textarea name="notes" placeholder="Ejemplo: esta semana tengo turno pesado, dejar sábado como descanso real.">${availability.notes || ""}</textarea></div>
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="soft-btn" data-modal-close>Cancelar</button>
+            <button type="submit" class="primary-btn">Guardar disponibilidad</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+  root.querySelectorAll("[data-modal-close]").forEach(btn => btn.addEventListener("click", closeModal));
+  root.querySelector(".modal-backdrop").addEventListener("click", (e) => { if (e.target.classList.contains("modal-backdrop")) closeModal(); });
+  root.querySelector("#availabilityForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const next = {
+      weeklyCloseDay: form.elements.weeklyCloseDay.value,
+      maxDailyBusinessHours: Number(form.elements.maxDailyBusinessHours.value || 3),
+      notes: form.elements.notes.value.trim(),
+      days: {}
+    };
+    WEEK_DAYS.forEach(d => {
+      next.days[d.key] = {
+        mode: form.elements[`day_${d.key}_mode`].value,
+        customHours: form.elements[`day_${d.key}_hours`].value
+      };
+    });
+    const stats = availabilityStats(next);
+    await updateDoc(workspaceDoc("profiles", id), { availability: next, weeklyLoadStatus: stats.status, updatedAt: serverTimestamp() });
+    await logActivity("edit_availability", "profiles", `Actualizó disponibilidad semanal de ${profile.name || "perfil"}`);
+    closeModal();
+  });
+}
+
 function openProfileImportance(id) {
   const profile = (cache.profiles || []).find(x => x.id === id);
   openInfoModal({
@@ -1024,7 +1204,7 @@ function openProfileImportance(id) {
       <div class="learning-box"><span class="eyebrow">Para qué existe</span><p>El perfil convierte a una persona en una pieza visible del sistema. No solo guarda nombre y correo: define qué responsabilidad cuida, qué rol principal sostiene y qué carga semanal debe vigilarse.</p></div>
       <div class="learning-box"><span class="eyebrow">Qué evita</span><p>Evita trabajo invisible, decisiones duplicadas, saturación creativa y confusión entre ayudar en muchas cosas y cargar con demasiadas cosas.</p></div>
       <div class="learning-box"><span class="eyebrow">Cómo ayuda a vender</span><p>Cuando el equipo sabe quién cuida marca, producto, tienda, promoción y números, el negocio deja de depender de impulsos. El sistema podrá conectar tareas, actividad y resultados con cada persona.</p></div>
-      <div class="learning-box"><span class="eyebrow">Siguiente paso</span><p>En el próximo bloque conectaremos estos perfiles con un catálogo de roles predefinidos, con límites, sinergias y recomendaciones por rol.</p></div>
+      <div class="learning-box"><span class="eyebrow">Disponibilidad semanal</span><p>Antes de asignar tareas por rol, el perfil debe declarar cuándo puede trabajar, qué días protege para descansar y cuál es su máximo sano de horas. Así el sistema planifica con vida real, no con fantasía de productividad.</p></div><div class="learning-box"><span class="eyebrow">Siguiente paso</span><p>Después conectaremos estos perfiles con roles predefinidos, tareas por día, riesgo de saturación y cierre semanal.</p></div>
     </div>`
   });
 }
