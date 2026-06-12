@@ -1792,3 +1792,82 @@ html:not([data-theme="dark"]) .field select{background:#ffffff;border-color:#c8c
   .nav-group:not([data-collapsed="true"]){min-height:190px; max-height:min(318px, 42vh);}
   .nav-group:not([data-collapsed="true"]) .nav-group-items{overflow-y:auto !important; max-height:none !important;}
 }
+
+/* V4.9.3 sidebar natural expansion fix
+   The whole left rail scrolls invisibly. Open groups grow naturally instead of clipping their options. */
+.sidebar{
+  height:100dvh !important;
+  max-height:100dvh !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  scrollbar-width:none !important;
+  -ms-overflow-style:none !important;
+  align-self:start !important;
+}
+.sidebar::-webkit-scrollbar{display:none !important;width:0 !important;height:0 !important;}
+.nav-categorized{
+  display:flex !important;
+  flex-direction:column !important;
+  flex:0 0 auto !important;
+  min-height:auto !important;
+  max-height:none !important;
+  overflow:visible !important;
+  gap:14px !important;
+}
+.nav-group{
+  flex:0 0 auto !important;
+  min-height:auto !important;
+  max-height:none !important;
+  overflow:visible !important;
+  display:block !important;
+}
+.nav-group[data-collapsed="true"]{
+  min-height:auto !important;
+  max-height:none !important;
+  overflow:hidden !important;
+}
+.nav-group:not([data-collapsed="true"]){
+  min-height:auto !important;
+  max-height:none !important;
+  overflow:visible !important;
+}
+.nav-group-toggle{
+  width:100% !important;
+}
+.nav-group-items{
+  display:grid !important;
+  grid-template-columns:1fr !important;
+  gap:7px !important;
+  min-height:auto !important;
+  max-height:none !important;
+  overflow:visible !important;
+  padding:0 12px 16px 39px !important;
+}
+.nav-group[data-collapsed="true"] .nav-group-items{
+  display:none !important;
+}
+.nav-group .nav-btn{
+  width:100% !important;
+  min-height:42px !important;
+  max-width:100% !important;
+  white-space:normal !important;
+  word-break:normal !important;
+  overflow-wrap:anywhere !important;
+}
+.sidebar-footer{
+  flex:0 0 auto !important;
+  margin-top:18px !important;
+  padding-bottom:18px !important;
+}
+@media (max-width:960px){
+  .sidebar{
+    position:relative !important;
+    height:100dvh !important;
+    max-height:100dvh !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+  }
+  .nav-categorized{overflow:visible !important; max-height:none !important;}
+  .nav-group:not([data-collapsed="true"]){max-height:none !important; overflow:visible !important;}
+  .nav-group:not([data-collapsed="true"] .nav-group-items){max-height:none !important; overflow:visible !important;}
+}
