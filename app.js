@@ -209,6 +209,201 @@ function switchView(view) {
   localStorage.setItem("the86_view", view);
 }
 
+
+const COLLECTION_LABELS = {
+  roles: "Rol", products: "Producto", audit: "Auditoría", competitors: "Competidor", promotion: "Campaña/canal", decisions: "Decisión",
+  files: "Recurso Drive", investments: "Inversión", equityPayments: "Abono / compensación", salesEntries: "Venta / dato", adEntries: "Gasto publicitario"
+};
+
+const FIELD_SCHEMAS = {
+  roles: [
+    {name:"title", label:"Título del rol", required:true, placeholder:"Dirección visual / Marketing / Editor"},
+    {name:"owner", label:"Responsable", placeholder:"Christopher / Socio / Cuenta empresa"},
+    {name:"status", label:"Estado", type:"select", options:["active","pending","paused"]},
+    {name:"notes", label:"Notas, límites y responsabilidades", type:"textarea"}
+  ],
+  products: [
+    {name:"name", label:"Nombre del producto", required:true},
+    {name:"collection", label:"Colección", placeholder:"Drop 00 — Essentials"},
+    {name:"heroStatus", label:"Tipo estratégico", type:"select", options:["Hero","Support","Conversion","Testing"]},
+    {name:"status", label:"Estado", type:"select", options:["active","draft","review","paused"]},
+    {name:"notes", label:"Notas", type:"textarea"}
+  ],
+  audit: [
+    {name:"section", label:"Sección auditada", required:true, placeholder:"Home / Producto / Carrito / Mobile"},
+    {name:"score", label:"Puntuación 0-100", type:"number"},
+    {name:"status", label:"Estado", type:"select", options:["No revisado","En revisión","Necesita mejora","Aprobado","Crítico"]},
+    {name:"notes", label:"Hallazgos y recomendaciones", type:"textarea"}
+  ],
+  competitors: [
+    {name:"brand", label:"Marca / competidor", required:true},
+    {name:"url", label:"URL", type:"url"},
+    {name:"score", label:"Puntuación comparativa", type:"number"},
+    {name:"notes", label:"Qué hacen bien, qué hacen mal, qué aprendemos", type:"textarea"}
+  ],
+  promotion: [
+    {name:"name", label:"Nombre de campaña o canal", required:true},
+    {name:"channel", label:"Canal", placeholder:"Instagram / Email / Shopify / Etsy"},
+    {name:"status", label:"Estado", type:"select", options:["Activo","Pausado","Futuro","Completado"]},
+    {name:"notes", label:"Objetivo, contenido, responsable y resultados", type:"textarea"}
+  ],
+  decisions: [
+    {name:"title", label:"Decisión", required:true},
+    {name:"impact", label:"Impacto", type:"select", options:["Alto","Medio","Bajo","Pendiente"]},
+    {name:"status", label:"Estado", type:"select", options:["active","review","closed"]},
+    {name:"notes", label:"Por qué se tomó, opciones descartadas y efecto", type:"textarea"}
+  ],
+  files: [
+    {name:"name", label:"Nombre del recurso", required:true},
+    {name:"url", label:"Link de Google Drive", type:"url", required:true},
+    {name:"category", label:"Categoría", type:"select", options:["01_Shopify_Captures","02_Product_Mockups","03_Ad_Materials","04_Competitor_Screenshots","05_Brand_References","06_Design_Finals","07_Campaign_Assets","08_Exports","09_Documents","10_To_Review","Otro"]},
+    {name:"relatedTo", label:"Relacionado con", placeholder:"Auditoría tienda / Drop 00 / Campaña"},
+    {name:"notes", label:"Notas", type:"textarea"}
+  ],
+  investments: [
+    {name:"name", label:"Nombre de inversión o gasto", required:true},
+    {name:"amount", label:"Monto USD", type:"number", required:true},
+    {name:"investedBy", label:"Quién invirtió / pagó", placeholder:"the86sclub@gmail.com"},
+    {name:"category", label:"Categoría", type:"select", options:["Legal / marca","Shopify","Printful / muestras","Dominio","Banco","Publicidad","Diseño","Software","Fotografía","Herramientas IA","Material de marketing","Etsy","Otros marketplaces","Otros"]},
+    {name:"date", label:"Fecha", type:"date"},
+    {name:"countsAsEquity", label:"Cuenta para participación estimada", type:"select", options:["yes","no"]},
+    {name:"isReimbursable", label:"Es reembolsable", type:"select", options:["no","yes"]},
+    {name:"relatedTo", label:"Relacionado con", placeholder:"General / Drop 00 / Shopify"},
+    {name:"receiptUrl", label:"Link de comprobante en Drive", type:"url"},
+    {name:"notes", label:"Notas", type:"textarea"}
+  ],
+  equityPayments: [
+    {name:"paidBy", label:"Quién paga / abona", required:true},
+    {name:"paidTo", label:"A quién compensa", required:true},
+    {name:"amount", label:"Monto USD", type:"number", required:true},
+    {name:"reason", label:"Motivo", placeholder:"Abono de compensación de inversión inicial"},
+    {name:"affectsEquity", label:"Afecta participación estimada", type:"select", options:["yes","no"]},
+    {name:"date", label:"Fecha", type:"date"},
+    {name:"notes", label:"Notas", type:"textarea"}
+  ],
+  salesEntries: [
+    {name:"source", label:"Fuente", type:"select", options:["Shopify","Etsy","Venta directa","Instagram","Otro"]},
+    {name:"date", label:"Fecha", type:"date"},
+    {name:"channel", label:"Canal", placeholder:"Online store / Instagram / Email"},
+    {name:"productName", label:"Producto relacionado"},
+    {name:"grossSales", label:"Ventas brutas USD", type:"number"},
+    {name:"discounts", label:"Descuentos USD", type:"number"},
+    {name:"netSales", label:"Ventas netas USD", type:"number"},
+    {name:"orders", label:"Número de órdenes", type:"number"},
+    {name:"unitsSold", label:"Unidades vendidas", type:"number"},
+    {name:"estimatedCost", label:"Costo estimado USD", type:"number"},
+    {name:"estimatedProfit", label:"Ganancia estimada USD", type:"number"},
+    {name:"notes", label:"Notas", type:"textarea"}
+  ],
+  adEntries: [
+    {name:"platform", label:"Plataforma", type:"select", options:["Meta Ads","Instagram organic","TikTok","Pinterest","Google","Otro"]},
+    {name:"campaignName", label:"Campaña", required:true},
+    {name:"date", label:"Fecha", type:"date"},
+    {name:"productName", label:"Producto relacionado"},
+    {name:"amountSpent", label:"Gasto USD", type:"number"},
+    {name:"impressions", label:"Impresiones", type:"number"},
+    {name:"clicks", label:"Clicks", type:"number"},
+    {name:"attributedRevenue", label:"Ingresos atribuidos USD", type:"number"},
+    {name:"attributedSales", label:"Ventas atribuidas", type:"number"},
+    {name:"notes", label:"Notas", type:"textarea"}
+  ],
+  stages: [
+    {name:"title", label:"Nombre de la etapa", required:true},
+    {name:"objective", label:"Objetivo", type:"textarea"},
+    {name:"status", label:"Estado", type:"select", options:["active","planned","paused","done"]}
+  ],
+  tasks: [
+    {name:"title", label:"Nombre de la tarea", required:true},
+    {name:"status", label:"Estado", type:"select", options:["pending","in_progress","done"]},
+    {name:"assignedTo", label:"Responsable"},
+    {name:"reviewer", label:"Revisor"},
+    {name:"subtasksText", label:"Subtareas, una por línea", type:"textarea", placeholder:"Primer paso\nSegundo paso"}
+  ]
+};
+
+function ensureModalRoot() {
+  let root = document.querySelector("#appModalRoot");
+  if (!root) {
+    root = document.createElement("div");
+    root.id = "appModalRoot";
+    document.body.appendChild(root);
+  }
+  return root;
+}
+
+function openRecordModal({ title, collectionName, schema, initial = {}, onSave }) {
+  return new Promise((resolve) => {
+    const root = ensureModalRoot();
+    const isEdit = Boolean(initial?.id);
+    const fieldsHtml = schema.map(fieldInputHtml).join("");
+    root.innerHTML = `
+      <div class="modal-backdrop" role="dialog" aria-modal="true">
+        <div class="record-modal">
+          <div class="modal-header">
+            <div><span class="eyebrow">${collectionName || "Registro"}</span><h2>${title}</h2></div>
+            <button class="icon-btn" data-modal-close aria-label="Cerrar">×</button>
+          </div>
+          <form id="recordModalForm" class="modal-form">
+            <div class="form-grid">${fieldsHtml}</div>
+            <div class="modal-actions">
+              <button type="button" class="soft-btn" data-modal-close>Cancelar</button>
+              <button type="submit" class="primary-btn">${isEdit ? "Guardar cambios" : "Agregar"}</button>
+            </div>
+          </form>
+        </div>
+      </div>`;
+    const form = root.querySelector("#recordModalForm");
+    schema.forEach(f => {
+      const el = form.elements[f.name];
+      if (!el) return;
+      let val = initial[f.name];
+      if (f.name === "subtasksText" && initial.subtasks) val = (initial.subtasks || []).map(s => s.title).join("\n");
+      if (val === undefined || val === null || val === "") val = defaultForField(f);
+      el.value = val;
+    });
+    root.querySelectorAll("[data-modal-close]").forEach(btn => btn.addEventListener("click", () => { closeModal(); resolve(null); }));
+    root.querySelector(".modal-backdrop").addEventListener("click", (e) => { if (e.target.classList.contains("modal-backdrop")) { closeModal(); resolve(null); } });
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = {};
+      schema.forEach(f => {
+        const el = form.elements[f.name];
+        if (!el) return;
+        let value = el.value.trim();
+        if (f.type === "number") value = Number(value || 0);
+        data[f.name] = value;
+      });
+      if (data.subtasksText !== undefined) {
+        data.subtasks = data.subtasksText.split("\n").map(x => x.trim()).filter(Boolean).map(title => ({ title, done: false }));
+        delete data.subtasksText;
+      }
+      await onSave(data);
+      closeModal();
+      resolve(data);
+    });
+    setTimeout(() => root.querySelector("input, textarea, select")?.focus(), 30);
+  });
+}
+
+function closeModal() { const root = document.querySelector("#appModalRoot"); if (root) root.innerHTML = ""; }
+function defaultForField(f) {
+  if (f.type === "date") return new Date().toISOString().slice(0,10);
+  if (f.type === "select") return f.options?.[0] || "";
+  if (f.name === "investedBy") return currentUser?.email || "";
+  if (f.name === "createdBy") return currentUser?.email || "";
+  return "";
+}
+function fieldInputHtml(f) {
+  const required = f.required ? "required" : "";
+  const placeholder = f.placeholder ? `placeholder="${escapeAttr(f.placeholder)}"` : "";
+  if (f.type === "textarea") return `<label class="field full"><span>${f.label}</span><textarea name="${f.name}" ${placeholder} ${required}></textarea></label>`;
+  if (f.type === "select") return `<label class="field"><span>${f.label}</span><select name="${f.name}" ${required}>${(f.options||[]).map(o=>`<option value="${escapeAttr(o)}">${o}</option>`).join("")}</select></label>`;
+  return `<label class="field"><span>${f.label}</span><input name="${f.name}" type="${f.type || "text"}" ${placeholder} ${required}/></label>`;
+}
+function escapeAttr(v) { return String(v || "").replaceAll('"', '&quot;'); }
+function recordActions(view, id) { return `<div class="small-actions"><button class="soft-btn" data-edit-record="${view}:${id}">Editar</button></div>`; }
+
+
 function renderAll() {
   if (!currentUser) return;
   renderDashboard();
@@ -311,38 +506,71 @@ async function onSubtaskToggle(e) {
 }
 
 async function addStage() {
-  const title = prompt("Nombre de la etapa:"); if (!title) return;
-  await addDoc(workspaceCol("stages"), { title, objective: "", status: "planned", order: cache.stages.length + 1, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-  await logActivity("create_stage", "stages", `Creó etapa: ${title}`);
+  await openRecordModal({
+    title: "Agregar etapa",
+    collectionName: "Etapas",
+    schema: FIELD_SCHEMAS.stages,
+    onSave: async (data) => {
+      await addDoc(workspaceCol("stages"), { ...data, order: cache.stages.length + 1, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      await logActivity("create_stage", "stages", `Creó etapa: ${data.title}`);
+    }
+  });
 }
 async function addTask(stageId) {
-  const title = prompt("Nombre de la tarea:"); if (!title) return;
-  await addDoc(workspaceCol("tasks"), { stageId, title, status: "pending", order: cache.tasks.filter(t=>t.stageId===stageId).length + 1, subtasks: [{title:"Primer paso", done:false}], createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-  await logActivity("create_task", "stages", `Creó tarea: ${title}`);
+  await openRecordModal({
+    title: "Agregar tarea",
+    collectionName: "Etapas",
+    schema: FIELD_SCHEMAS.tasks,
+    onSave: async (data) => {
+      await addDoc(workspaceCol("tasks"), { ...data, stageId, order: cache.tasks.filter(t=>t.stageId===stageId).length + 1, subtasks: data.subtasks?.length ? data.subtasks : [{title:"Primer paso", done:false}], createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      await logActivity("create_task", "stages", `Creó tarea: ${data.title}`);
+    }
+  });
 }
 
 function renderGeneric(view, label, fields) {
   const container = $(`#${view}`); if (!container) return;
   const items = cache[view] || [];
-  container.innerHTML = `<div class="toolbar"><button class="primary-btn" id="add-${view}">Agregar ${label.toLowerCase()}</button></div>${items.length ? `<div class="item-list">${items.map(item => `<div class="item"><div class="item-head"><strong>${item[fields[0]] || label}</strong><span class="badge">${item.status || item.impact || "registro"}</span></div>${fields.slice(1).map(f => `<p><strong>${f}:</strong> ${formatValue(item[f])}</p>`).join("")}</div>`).join("")}</div>` : emptyState()}`;
+  container.innerHTML = `<div class="toolbar"><button class="primary-btn" id="add-${view}">Agregar ${label.toLowerCase()}</button></div>${items.length ? `<div class="item-list">${items.map(item => `<div class="item"><div class="item-head"><strong>${item[fields[0]] || label}</strong><span class="badge">${item.status || item.impact || "registro"}</span></div>${fields.slice(1).map(f => `<p><strong>${f}:</strong> ${formatValue(item[f])}</p>`).join("")}${recordActions(view, item.id)}</div>`).join("")}</div>` : emptyState()}`;
   $(`#add-${view}`)?.addEventListener("click", () => addGeneric(view, label, fields));
+  $$(`[data-edit-record^="${view}:"]`).forEach(btn => btn.addEventListener("click", () => editGeneric(btn.dataset.editRecord.split(":")[0], btn.dataset.editRecord.split(":")[1])));
 }
 
 async function addGeneric(view, label, fields) {
-  const data = { createdAt: serverTimestamp(), createdBy: currentUser.email, status: "active" };
-  for (const field of fields) {
-    const val = prompt(`${label} - ${field}:`);
-    if (val !== null) data[field] = val;
-  }
-  await addDoc(workspaceCol(view), data);
-  await logActivity(`create_${view}`, view, `Agregó ${label}: ${data[fields[0]] || "sin título"}`);
+  const schema = FIELD_SCHEMAS[view] || fields.map(f => ({ name:f, label:f }));
+  await openRecordModal({
+    title: `Agregar ${label.toLowerCase()}`,
+    collectionName: label,
+    schema,
+    onSave: async (data) => {
+      await addDoc(workspaceCol(view), { ...data, createdBy: currentUser.email, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), status: data.status || "active" });
+      await logActivity("create_record", view, `Agregó ${label}: ${data[fields[0]] || data.title || data.name || label}`);
+    }
+  });
+}
+
+async function editGeneric(view, id) {
+  const item = (cache[view] || []).find(x => x.id === id);
+  if (!item) return;
+  const label = COLLECTION_LABELS[view] || "Registro";
+  const schema = FIELD_SCHEMAS[view] || Object.keys(item).filter(k => !["id","createdAt","updatedAt"].includes(k)).map(k => ({name:k,label:k}));
+  await openRecordModal({
+    title: `Editar ${label.toLowerCase()}`,
+    collectionName: label,
+    schema,
+    initial: item,
+    onSave: async (data) => {
+      await updateDoc(workspaceDoc(view, id), { ...data, updatedAt: serverTimestamp() });
+      await logActivity("edit_record", view, `Editó ${label}: ${data.title || data.name || item.title || item.name || id}`);
+    }
+  });
 }
 
 function renderInvestments() {
   const f = getFinanceSummary();
   const equityRows = f.equity.length ? f.equity.map(e => `<div class="item"><div class="item-head"><strong>${e.person}</strong><span class="badge">${pct(e.percent)}</span></div><p>Capital neto estimado: ${money(e.amount)}</p><div class="progress-track"><div class="progress-fill" style="width:${Math.max(0, Math.min(100, e.percent))}%"></div></div></div>`).join("") : emptyState();
-  const invList = cache.investments.length ? cache.investments.map(i => `<div class="item"><div class="item-head"><strong>${i.name || "Inversión"}</strong><span class="badge">${money(i.amount)}</span></div><p><strong>Quién invirtió:</strong> ${i.investedBy || "—"}</p><p><strong>Categoría:</strong> ${i.category || "—"} · <strong>Fecha:</strong> ${i.date || "—"}</p><p><strong>Cuenta para participación:</strong> ${i.countsAsEquity === "no" ? "No" : "Sí"}</p><p>${formatValue(i.receiptUrl || "")}</p><p class="muted">${i.notes || ""}</p></div>`).join("") : emptyState();
-  const payList = cache.equityPayments.length ? cache.equityPayments.map(p => `<div class="item"><div class="item-head"><strong>${p.paidBy || "Pagador"} → ${p.paidTo || "Receptor"}</strong><span class="badge">${money(p.amount)}</span></div><p><strong>Motivo:</strong> ${p.reason || "Abono de compensación"}</p><p><strong>Afecta participación:</strong> ${p.affectsEquity === "no" ? "No" : "Sí"}</p><p class="muted">${p.notes || ""}</p></div>`).join("") : emptyState();
+  const invList = cache.investments.length ? cache.investments.map(i => `<div class="item"><div class="item-head"><strong>${i.name || "Inversión"}</strong><span class="badge">${money(i.amount)}</span></div><p><strong>Quién invirtió:</strong> ${i.investedBy || "—"}</p><p><strong>Categoría:</strong> ${i.category || "—"} · <strong>Fecha:</strong> ${i.date || "—"}</p><p><strong>Cuenta para participación:</strong> ${i.countsAsEquity === "no" ? "No" : "Sí"}</p><p>${formatValue(i.receiptUrl || "")}</p><p class="muted">${i.notes || ""}</p>${recordActions("investments", i.id)}</div>`).join("") : emptyState();
+  const payList = cache.equityPayments.length ? cache.equityPayments.map(p => `<div class="item"><div class="item-head"><strong>${p.paidBy || "Pagador"} → ${p.paidTo || "Receptor"}</strong><span class="badge">${money(p.amount)}</span></div><p><strong>Motivo:</strong> ${p.reason || "Abono de compensación"}</p><p><strong>Afecta participación:</strong> ${p.affectsEquity === "no" ? "No" : "Sí"}</p><p class="muted">${p.notes || ""}</p>${recordActions("equityPayments", p.id)}</div>`).join("") : emptyState();
   $("#investments").innerHTML = `
     <div class="notice"><strong>Nota interna:</strong> esta sección calcula una participación estimada según aportes netos registrados. No reemplaza contrato, abogado, contador ni acuerdo legal de socios.</div>
     <div class="grid grid-3">
@@ -356,81 +584,90 @@ function renderInvestments() {
     </div>
     <div class="card" style="margin-top:16px"><div class="item-head"><h3>Inversiones y gastos</h3><button class="primary-btn" id="addInvestment">Agregar inversión</button></div>${invList}</div>
     <div class="card" style="margin-top:16px"><h3>Abonos / compensaciones entre socios</h3>${payList}</div>`;
-  $("#addInvestment")?.addEventListener("click", addInvestment);
-  $("#addEquityPayment")?.addEventListener("click", addEquityPayment);
+  $("#addInvestment")?.addEventListener("click", () => addInvestment());
+  $("#addEquityPayment")?.addEventListener("click", () => addEquityPayment());
+  $$(`[data-edit-record^="investments:"]`).forEach(btn => btn.addEventListener("click", () => addInvestment(btn.dataset.editRecord.split(":")[1])));
+  $$(`[data-edit-record^="equityPayments:"]`).forEach(btn => btn.addEventListener("click", () => addEquityPayment(btn.dataset.editRecord.split(":")[1])));
 }
 
-async function addInvestment() {
-  const name = prompt("Nombre de la inversión o gasto:"); if (!name) return;
-  const amount = prompt("Monto en USD:"); if (amount === null) return;
-  const investedBy = prompt("Quién invirtió/pagó:", "the86sclub@gmail.com") || "";
-  const category = prompt("Categoría:", "Legal / marca") || "Otros";
-  const date = prompt("Fecha:", new Date().toISOString().slice(0,10)) || "";
-  const countsAsEquity = prompt("¿Cuenta para participación estimada? escribe yes/no", "yes") || "yes";
-  const isReimbursable = prompt("¿Es reembolsable? escribe yes/no", "no") || "no";
-  const relatedTo = prompt("Relacionado con:", "General") || "General";
-  const receiptUrl = prompt("Link de comprobante en Drive, si existe:") || "";
-  const notes = prompt("Notas:") || "";
-  await addDoc(workspaceCol("investments"), { name, amount: Number(amount)||0, investedBy, category, date, countsAsEquity: countsAsEquity.toLowerCase().startsWith("n") ? "no" : "yes", isReimbursable, relatedTo, receiptUrl, notes, createdBy: currentUser.email, createdAt: serverTimestamp(), status: "active" });
-  await logActivity("create_investment", "investments", `Registró inversión: ${name} (${money(amount)})`);
+async function addInvestment(existingId=null) {
+  const item = existingId ? cache.investments.find(x=>x.id===existingId) : null;
+  await openRecordModal({
+    title: item ? "Editar inversión" : "Agregar inversión",
+    collectionName: "Inversiones",
+    schema: FIELD_SCHEMAS.investments,
+    initial: item || {},
+    onSave: async (data) => {
+      const payload = { ...data, amount: Number(data.amount)||0, createdBy: item?.createdBy || currentUser.email, updatedAt: serverTimestamp(), status: item?.status || "active" };
+      if (item) await updateDoc(workspaceDoc("investments", item.id), payload);
+      else await addDoc(workspaceCol("investments"), { ...payload, createdAt: serverTimestamp() });
+      await logActivity(item ? "edit_investment" : "create_investment", "investments", `${item ? "Editó" : "Registró"} inversión: ${data.name}`);
+    }
+  });
 }
 
-async function addEquityPayment() {
-  const paidBy = prompt("Quién paga/abona:"); if (!paidBy) return;
-  const paidTo = prompt("A quién le paga/compensa:"); if (!paidTo) return;
-  const amount = prompt("Monto en USD:"); if (amount === null) return;
-  const reason = prompt("Motivo:", "Abono de compensación de inversión inicial") || "Abono de compensación";
-  const affectsEquity = prompt("¿Este abono afecta participación estimada? yes/no", "yes") || "yes";
-  const date = prompt("Fecha:", new Date().toISOString().slice(0,10)) || "";
-  const notes = prompt("Notas:") || "";
-  await addDoc(workspaceCol("equityPayments"), { paidBy, paidTo, amount: Number(amount)||0, reason, affectsEquity: affectsEquity.toLowerCase().startsWith("n") ? "no" : "yes", date, notes, createdBy: currentUser.email, createdAt: serverTimestamp(), status: "active" });
-  await logActivity("create_equity_payment", "investments", `Registró abono entre socios: ${paidBy} → ${paidTo} (${money(amount)})`);
+async function addEquityPayment(existingId=null) {
+  const item = existingId ? cache.equityPayments.find(x=>x.id===existingId) : null;
+  await openRecordModal({
+    title: item ? "Editar abono / compensación" : "Agregar abono / compensación",
+    collectionName: "Participación estimada",
+    schema: FIELD_SCHEMAS.equityPayments,
+    initial: item || {},
+    onSave: async (data) => {
+      const payload = { ...data, amount: Number(data.amount)||0, createdBy: item?.createdBy || currentUser.email, updatedAt: serverTimestamp(), status: item?.status || "active" };
+      if (item) await updateDoc(workspaceDoc("equityPayments", item.id), payload);
+      else await addDoc(workspaceCol("equityPayments"), { ...payload, createdAt: serverTimestamp() });
+      await logActivity(item ? "edit_equity_payment" : "create_equity_payment", "investments", `${item ? "Editó" : "Registró"} abono: ${data.paidBy} → ${data.paidTo}`);
+    }
+  });
 }
 
 function renderCommercial() {
   const sales = cache.salesEntries || [];
   const ads = cache.adEntries || [];
-  const salesList = sales.length ? sales.map(s => `<div class="item"><div class="item-head"><strong>${s.source || "Venta"} · ${s.date || ""}</strong><span class="badge">${money(s.netSales || s.grossSales)}</span></div><p><strong>Canal:</strong> ${s.channel || "—"} · <strong>Producto:</strong> ${s.productName || "—"}</p><p><strong>Órdenes:</strong> ${s.orders || 0} · <strong>Unidades:</strong> ${s.unitsSold || 0}</p><p class="muted">${s.notes || ""}</p></div>`).join("") : emptyState();
-  const adList = ads.length ? ads.map(a => `<div class="item"><div class="item-head"><strong>${a.platform || "Ads"} · ${a.campaignName || "Campaña"}</strong><span class="badge">${money(a.amountSpent)}</span></div><p><strong>Producto:</strong> ${a.productName || "—"} · <strong>Ingresos atribuidos:</strong> ${money(a.attributedRevenue)}</p><p><strong>Clicks:</strong> ${a.clicks || 0} · <strong>ROAS:</strong> ${a.amountSpent ? (num(a.attributedRevenue)/num(a.amountSpent)).toFixed(2) : "—"}</p><p class="muted">${a.notes || ""}</p></div>`).join("") : emptyState();
+  const salesList = sales.length ? sales.map(s => `<div class="item"><div class="item-head"><strong>${s.source || "Venta"} · ${s.date || ""}</strong><span class="badge">${money(s.netSales || s.grossSales)}</span></div><p><strong>Canal:</strong> ${s.channel || "—"} · <strong>Producto:</strong> ${s.productName || "—"}</p><p><strong>Órdenes:</strong> ${s.orders || 0} · <strong>Unidades:</strong> ${s.unitsSold || 0}</p><p class="muted">${s.notes || ""}</p>${recordActions("salesEntries", s.id)}</div>`).join("") : emptyState();
+  const adList = ads.length ? ads.map(a => `<div class="item"><div class="item-head"><strong>${a.platform || "Ads"} · ${a.campaignName || "Campaña"}</strong><span class="badge">${money(a.amountSpent)}</span></div><p><strong>Producto:</strong> ${a.productName || "—"} · <strong>Ingresos atribuidos:</strong> ${money(a.attributedRevenue)}</p><p><strong>Clicks:</strong> ${a.clicks || 0} · <strong>ROAS:</strong> ${a.amountSpent ? (num(a.attributedRevenue)/num(a.amountSpent)).toFixed(2) : "—"}</p><p class="muted">${a.notes || ""}</p>${recordActions("adEntries", a.id)}</div>`).join("") : emptyState();
   $("#commercial").innerHTML = `
     <div class="grid grid-2">
       <div class="card"><div class="item-head"><h3>Ventas / ingresos</h3><button class="primary-btn" id="addSale">Agregar venta/dato</button></div>${salesList}</div>
       <div class="card"><div class="item-head"><h3>Publicidad / Meta / Ads</h3><button class="primary-btn" id="addAd">Agregar gasto ads</button></div>${adList}</div>
     </div>`;
-  $("#addSale")?.addEventListener("click", addSaleEntry);
-  $("#addAd")?.addEventListener("click", addAdEntry);
+  $("#addSale")?.addEventListener("click", () => addSaleEntry());
+  $("#addAd")?.addEventListener("click", () => addAdEntry());
+  $$(`[data-edit-record^="salesEntries:"]`).forEach(btn => btn.addEventListener("click", () => addSaleEntry(btn.dataset.editRecord.split(":")[1])));
+  $$(`[data-edit-record^="adEntries:"]`).forEach(btn => btn.addEventListener("click", () => addAdEntry(btn.dataset.editRecord.split(":")[1])));
 }
 
-async function addSaleEntry() {
-  const source = prompt("Fuente:", "Shopify") || "Shopify";
-  const date = prompt("Fecha:", new Date().toISOString().slice(0,10)) || "";
-  const channel = prompt("Canal:", "Online store") || "";
-  const productName = prompt("Producto relacionado:", "") || "";
-  const grossSales = Number(prompt("Ventas brutas USD:", "0") || 0);
-  const discounts = Number(prompt("Descuentos USD:", "0") || 0);
-  const netSales = Number(prompt("Ventas netas USD:", String(Math.max(0, grossSales - discounts))) || 0);
-  const orders = Number(prompt("Número de órdenes:", "0") || 0);
-  const unitsSold = Number(prompt("Unidades vendidas:", "0") || 0);
-  const estimatedCost = Number(prompt("Costo estimado USD:", "0") || 0);
-  const estimatedProfit = Number(prompt("Ganancia estimada USD:", String(netSales - estimatedCost)) || 0);
-  const notes = prompt("Notas:") || "";
-  await addDoc(workspaceCol("salesEntries"), { source, date, channel, productName, grossSales, discounts, netSales, orders, unitsSold, estimatedCost, estimatedProfit, notes, createdBy: currentUser.email, createdAt: serverTimestamp(), status: "active" });
-  await logActivity("create_sale", "commercial", `Registró venta/dato comercial: ${source} ${money(netSales)}`);
+async function addSaleEntry(existingId=null) {
+  const item = existingId ? cache.salesEntries.find(x=>x.id===existingId) : null;
+  await openRecordModal({
+    title: item ? "Editar venta / dato comercial" : "Agregar venta / dato comercial",
+    collectionName: "Ventas y datos",
+    schema: FIELD_SCHEMAS.salesEntries,
+    initial: item || {},
+    onSave: async (data) => {
+      const payload = { ...data, grossSales:Number(data.grossSales)||0, discounts:Number(data.discounts)||0, netSales:Number(data.netSales)||0, orders:Number(data.orders)||0, unitsSold:Number(data.unitsSold)||0, estimatedCost:Number(data.estimatedCost)||0, estimatedProfit:Number(data.estimatedProfit)||0, createdBy: item?.createdBy || currentUser.email, updatedAt: serverTimestamp(), status: item?.status || "active" };
+      if (item) await updateDoc(workspaceDoc("salesEntries", item.id), payload);
+      else await addDoc(workspaceCol("salesEntries"), { ...payload, createdAt: serverTimestamp() });
+      await logActivity(item ? "edit_sale" : "create_sale", "commercial", `${item ? "Editó" : "Registró"} venta/dato comercial: ${data.source} ${money(data.netSales)}`);
+    }
+  });
 }
 
-async function addAdEntry() {
-  const platform = prompt("Plataforma:", "Meta Ads") || "Meta Ads";
-  const campaignName = prompt("Campaña:", "") || "Campaña";
-  const date = prompt("Fecha:", new Date().toISOString().slice(0,10)) || "";
-  const productName = prompt("Producto relacionado:", "") || "";
-  const amountSpent = Number(prompt("Gasto USD:", "0") || 0);
-  const impressions = Number(prompt("Impresiones:", "0") || 0);
-  const clicks = Number(prompt("Clicks:", "0") || 0);
-  const attributedRevenue = Number(prompt("Ingresos atribuidos USD:", "0") || 0);
-  const attributedSales = Number(prompt("Ventas atribuidas:", "0") || 0);
-  const notes = prompt("Notas:") || "";
-  await addDoc(workspaceCol("adEntries"), { platform, campaignName, date, productName, amountSpent, impressions, clicks, attributedRevenue, attributedSales, notes, createdBy: currentUser.email, createdAt: serverTimestamp(), status: "active" });
-  await logActivity("create_ad", "commercial", `Registró gasto publicitario: ${platform} ${money(amountSpent)}`);
+async function addAdEntry(existingId=null) {
+  const item = existingId ? cache.adEntries.find(x=>x.id===existingId) : null;
+  await openRecordModal({
+    title: item ? "Editar gasto publicitario" : "Agregar gasto publicitario",
+    collectionName: "Publicidad / Ads",
+    schema: FIELD_SCHEMAS.adEntries,
+    initial: item || {},
+    onSave: async (data) => {
+      const payload = { ...data, amountSpent:Number(data.amountSpent)||0, impressions:Number(data.impressions)||0, clicks:Number(data.clicks)||0, attributedRevenue:Number(data.attributedRevenue)||0, attributedSales:Number(data.attributedSales)||0, createdBy: item?.createdBy || currentUser.email, updatedAt: serverTimestamp(), status: item?.status || "active" };
+      if (item) await updateDoc(workspaceDoc("adEntries", item.id), payload);
+      else await addDoc(workspaceCol("adEntries"), { ...payload, createdAt: serverTimestamp() });
+      await logActivity(item ? "edit_ad" : "create_ad", "commercial", `${item ? "Editó" : "Registró"} gasto publicitario: ${data.platform} ${money(data.amountSpent)}`);
+    }
+  });
 }
 
 function barList(items, labelKey, valueKey, emptyText="Sin datos") {
@@ -485,17 +722,24 @@ function renderDiagnosis() {
 
 function renderFiles() {
   const items = cache.files || [];
-  $("#files").innerHTML = `<div class="toolbar"><button class="primary-btn" id="add-file">Agregar recurso Drive</button>${cache.settings.driveRootUrl ? `<a class="soft-btn" href="${cache.settings.driveRootUrl}" target="_blank" rel="noreferrer">Abrir Drive madre</a>` : ""}</div>${items.length ? `<div class="item-list">${items.map(f => `<div class="item"><div class="item-head"><strong>${f.name || "Recurso"}</strong><span class="badge">${f.category || "link"}</span></div><p>${f.notes || ""}</p><p><a href="${f.url}" target="_blank" rel="noreferrer">Abrir recurso</a></p><p class="muted">Relacionado con: ${f.relatedTo || "general"}</p></div>`).join("")}</div>` : emptyState()}`;
-  $("#add-file")?.addEventListener("click", addFileRecord);
+  $("#files").innerHTML = `<div class="toolbar"><button class="primary-btn" id="add-file">Agregar recurso Drive</button>${cache.settings.driveRootUrl ? `<a class="soft-btn" href="${cache.settings.driveRootUrl}" target="_blank" rel="noreferrer">Abrir Drive madre</a>` : ""}</div>${items.length ? `<div class="item-list">${items.map(f => `<div class="item"><div class="item-head"><strong>${f.name || "Recurso"}</strong><span class="badge">${f.category || "link"}</span></div><p>${f.notes || ""}</p><p><a href="${f.url}" target="_blank" rel="noreferrer">Abrir recurso</a></p><p class="muted">Relacionado con: ${f.relatedTo || "general"}</p>${recordActions("files", f.id)}</div>`).join("")}</div>` : emptyState()}`;
+  $("#add-file")?.addEventListener("click", () => addFileRecord());
+  $$(`[data-edit-record^="files:"]`).forEach(btn => btn.addEventListener("click", () => addFileRecord(btn.dataset.editRecord.split(":")[1])));
 }
-async function addFileRecord() {
-  const name = prompt("Nombre del recurso:"); if (!name) return;
-  const url = prompt("Pega el link de Google Drive:"); if (!url) return;
-  const category = prompt("Categoría:", "01_Shopify_Captures") || "General";
-  const relatedTo = prompt("Relacionado con:", "Auditoría tienda") || "General";
-  const notes = prompt("Notas:") || "";
-  await addDoc(workspaceCol("files"), { name, url, category, relatedTo, notes, createdBy: currentUser.email, createdAt: serverTimestamp(), status: "active" });
-  await logActivity("create_file_link", "files", `Agregó recurso Drive: ${name}`);
+async function addFileRecord(existingId=null) {
+  const item = existingId ? cache.files.find(x=>x.id===existingId) : null;
+  await openRecordModal({
+    title: item ? "Editar recurso Drive" : "Agregar recurso Drive",
+    collectionName: "Archivos Drive",
+    schema: FIELD_SCHEMAS.files,
+    initial: item || {},
+    onSave: async (data) => {
+      const payload = { ...data, createdBy: item?.createdBy || currentUser.email, updatedAt: serverTimestamp(), status: item?.status || "active" };
+      if (item) await updateDoc(workspaceDoc("files", item.id), payload);
+      else await addDoc(workspaceCol("files"), { ...payload, createdAt: serverTimestamp() });
+      await logActivity(item ? "edit_file_link" : "create_file_link", "files", `${item ? "Editó" : "Agregó"} recurso Drive: ${data.name}`);
+    }
+  });
 }
 
 function renderActivity() { $("#activity").innerHTML = `<div class="card"><h3>Actividad reciente</h3>${activityList(50)}</div>`; }

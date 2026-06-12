@@ -104,3 +104,30 @@ a { color: var(--accent-strong); }
 @media (max-width: 720px) {
   .grid-4 { grid-template-columns: 1fr; }
 }
+
+/* Modal form system */
+.modal-backdrop{
+  position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.58); padding:24px; backdrop-filter: blur(5px);
+}
+.record-modal{
+  width:min(880px, 96vw); max-height:88vh; overflow:auto; border:1px solid var(--border);
+  border-radius:28px; background:var(--panel); box-shadow:0 30px 80px rgba(0,0,0,.38);
+}
+.modal-header{display:flex; justify-content:space-between; align-items:flex-start; gap:18px; padding:26px 28px 10px; border-bottom:1px solid var(--border)}
+.modal-header h2{margin:4px 0 0; font-size:28px; letter-spacing:-.02em}
+.icon-btn{border:1px solid var(--border); background:var(--panel-2); color:var(--text); border-radius:14px; width:42px; height:42px; font-size:24px; cursor:pointer}
+.icon-btn:hover{background:var(--hover)}
+.modal-form{padding:24px 28px 28px}
+.form-grid{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:16px}
+.field{display:flex; flex-direction:column; gap:8px}
+.field.full{grid-column:1 / -1}
+.field span{font-size:13px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); font-weight:800}
+.field input,.field textarea,.field select{
+  width:100%; border:1px solid var(--border); border-radius:16px; background:var(--input); color:var(--text);
+  padding:14px 15px; font:inherit; outline:none;
+}
+.field textarea{min-height:120px; resize:vertical}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+.modal-actions{display:flex; justify-content:flex-end; gap:12px; padding-top:20px; border-top:1px solid var(--border); margin-top:22px}
+@media (max-width: 720px){.modal-backdrop{padding:10px}.record-modal{max-height:94vh;border-radius:22px}.form-grid{grid-template-columns:1fr}.modal-header{padding:20px 20px 8px}.modal-form{padding:18px 20px 22px}.modal-actions{flex-direction:column-reverse}.modal-actions button{width:100%}}
