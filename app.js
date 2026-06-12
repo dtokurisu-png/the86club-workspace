@@ -24,7 +24,7 @@ window.addEventListener("unhandledrejection", (event) => {
 });
 let cache = {
   stages: [], tasks: [], profiles: [], roles: [], products: [], audit: [], competitors: [], promotion: [], files: [], decisions: [], activity: [], settings: {},
-  investments: [], equityPayments: [], salesEntries: [], adEntries: [], channelMetrics: [], profileWeeklyTasks: []
+  investments: [], equityPayments: [], salesEntries: [], adEntries: [], channelMetrics: [], profileWeeklyTasks: [], profileNextWeekPlans: []
 };
 
 const stageSeeds = [
@@ -301,6 +301,194 @@ function workloadMoveSuggestion(days) {
 
 function workloadPercentLabel(percent) {
   return percent > 100 ? "100%+" : `${percent}%`;
+}
+
+
+function daysUntilWeeklyClose(closeDayKey) {
+  const jsDayToKey = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const todayKey = jsDayToKey[new Date().getDay()];
+  const todayIndex = WEEK_DAYS.findIndex(d => d.key === todayKey);
+  const closeIndex = WEEK_DAYS.findIndex(d => d.key === closeDayKey);
+  if (todayIndex < 0 || closeIndex < 0) return 0;
+  return (closeIndex - todayIndex + 7) % 7;
+}
+
+function weeklyProgressLabel(percent, totalTasks) {
+  if (!totalTasks) return { label: "Sin tareas planificadas todavía", className: "status-neutral" };
+  if (percent <= 30) return { label: "Avance bajo", className: "status-red" };
+  if (percent <= 65) return { label: "Avance parcial", className: "status-yellow" };
+  if (percent <= 89) return { label: "Buen avance", className: "status-green" };
+  return { label: "Semana casi cerrada", className: "status-green" };
+}
+
+function classifyTaskImpact(task = {}) {
+  const text = `${task.title || ""} ${task.description || ""} ${task.notes || ""}`.toLowerCase();
+  const checks = [
+    ["estrategia", ["estrateg", "prioridad", "decision", "dirección", "direccion"]],
+    ["marca", ["marca", "tono", "mensaje", "identidad", "brand"]],
+    ["visual", ["visual", "arte", "diseño", "diseno", "mockup", "photoshop", "imagen"]],
+    ["producto", ["producto", "colección", "coleccion", "drop", "color", "precio"]],
+    ["shopify", ["shopify", "tienda", "producto", "carrito", "checkout", "tracking"]],
+    ["marketing", ["marketing", "instagram", "tiktok", "publicación", "publicacion", "post", "reel"]],
+    ["ventas", ["venta", "cliente", "conversión", "conversion", "pedido", "compr"]],
+    ["finanzas", ["gasto", "inversión", "inversion", "ads", "presupuesto", "margen", "costo"]],
+    ["datos", ["dato", "métrica", "metrica", "estadística", "estadistica", "analisis", "analytics"]],
+    ["operaciones", ["drive", "archivo", "orden", "documento", "evidencia", "versión", "version"]],
+    ["comunidad", ["comunidad", "comentario", "respuesta", "foro", "grupo", "chef", "cocina"]]
+  ];
+  for (const [area, words] of checks) {
+    if (words.some(w => text.includes(w))) return area;
+  }
+  return task.source === "manual" ? "operativo/manual" : (task.source || "sin clasificar");
+}
+
+function impactBuckets(tasks = []) {
+  const buckets = {};
+  tasks.forEach(task => {
+    const area = classifyTaskImpact(task);
+    if (!buckets[area]) buckets[area] = { total: 0, completed: 0, minutes: 0 };
+    buckets[area].total += 1;
+    if (task.status === "completed") buckets[area].completed += 1;
+    buckets[area].minutes += taskMinutes(task);
+  });
+  return Object.entries(buckets).sort((a,b) => b[1].total - a[1].total);
+}
+
+function preCloseRecommendation(report) {
+  if (!report.totalTasks) return "Todavía no hay tareas planificadas. Antes del cierre, agrega tareas pequeñas y medibles para que la semana tenga dirección.";
+  if (report.protectedWithTasks > 0) return "Hay tareas en días protegidos. Conviene moverlas o reducir alcance para no convertir el descanso en otra jornada.";
+  if (report.daysToClose <= 2 && report.pendingRatio > 50) return "El cierre está cerca y queda más de la mitad pendiente. Mueve tareas a la próxima semana o reduce alcance para evitar presión innecesaria.";
+  if (report.saturatedDays > 0 && report.progressPercent >= 70) return "El avance es bueno, pero hubo saturación. La próxima semana conviene repartir mejor, no solo trabajar más.";
+  if (report.saturatedDays > 0) return "La semana tiene saturación. Antes de agregar más trabajo, revisa qué se puede mover o volver más ligero.";
+  if (report.progressPercent >= 90) return "La semana está casi cerrada. Usa el cierre para extraer aprendizaje y preparar una siguiente semana realista.";
+  if (report.progressPercent >= 66) return "La semana va bien. Mantén el cierre, revisa pendientes y evita meter tareas extra por impulso.";
+  if (report.progressPercent >= 31) return "Hay avance parcial. Revisa si las tareas pendientes son realmente necesarias esta semana o si deben pasar a la próxima.";
+  return "El avance está bajo. Revisa si hubo poca disponibilidad, tareas demasiado grandes o falta de foco antes de prometer más para la próxima semana.";
+}
+
+function currentVsNextAvailabilityWarning(currentAvailability, nextAvailability) {
+  if (!nextAvailability || !nextAvailability.days) return "";
+  const current = availabilityStats(currentAvailability);
+  const next = availabilityStats(nextAvailability);
+  const currentLoadPotential = current.available + (current.light * 0.4) + Number(current.maxHours || 3) / 3;
+  const nextLoadPotential = next.available + (next.light * 0.4) + Number(next.maxHours || 3) / 3;
+  if (next.protectedDays < current.protectedDays || next.maxHours > current.maxHours || nextLoadPotential > currentLoadPotential + 1) {
+    return "La próxima semana parece más cargada que la actual. Revisa si esto es realista según tu trabajo externo y descanso.";
+  }
+  return "";
+}
+
+function getNextWeekPlan(profileId) {
+  return (cache.profileNextWeekPlans || []).find(plan => plan.profileId === profileId) || null;
+}
+
+function weeklyPreCloseReport(profile, tasks) {
+  const availability = normalizeAvailability(profile.availability);
+  const workload = weeklyWorkloadReport(profile, tasks);
+  const totalTasks = tasks.length;
+  const completed = tasks.filter(t => t.status === "completed").length;
+  const pending = Math.max(0, totalTasks - completed);
+  const progressPercent = totalTasks ? Math.round((completed / totalTasks) * 100) : 0;
+  const pendingRatio = totalTasks ? Math.round((pending / totalTasks) * 100) : 0;
+  const daysToClose = daysUntilWeeklyClose(availability.weeklyCloseDay);
+  const progress = weeklyProgressLabel(progressPercent, totalTasks);
+  const buckets = impactBuckets(tasks);
+  const report = {
+    availability,
+    closeDay: availability.weeklyCloseDay,
+    daysToClose,
+    totalTasks,
+    completed,
+    pending,
+    progressPercent,
+    pendingRatio,
+    progress,
+    workloadAverage: workload.average,
+    highest: workload.highest,
+    saturatedDays: workload.saturatedDays,
+    protectedWithTasks: workload.protectedWithTasks,
+    totalPlanned: workload.totalPlanned,
+    totalWeighted: workload.totalWeighted,
+    buckets
+  };
+  report.recommendation = preCloseRecommendation(report);
+  return report;
+}
+
+function renderWeeklyPreClose(profile) {
+  const tasks = getProfileWeeklyTasks(profile.id);
+  const report = weeklyPreCloseReport(profile, tasks);
+  const nextPlan = getNextWeekPlan(profile.id);
+  const nextAvailability = nextPlan?.availability ? normalizeAvailability(nextPlan.availability) : null;
+  const nextStats = nextAvailability ? availabilityStats(nextAvailability) : null;
+  const nextWarning = currentVsNextAvailabilityWarning(profile.availability, nextAvailability);
+  const closePhrase = report.daysToClose === 0 ? "Hoy es el cierre" : report.daysToClose === 1 ? "Falta 1 día" : `Faltan ${report.daysToClose} días`;
+  const closePressure = report.daysToClose <= 2 && report.pendingRatio > 50
+    ? `<div class="calendar-suggestion warning-suggestion">El cierre está cerca y quedan varias tareas. Puedes mover tareas a la próxima semana o reducir alcance para evitar presión innecesaria.</div>`
+    : "";
+  const impactHtml = report.buckets.length
+    ? report.buckets.map(([area, data]) => `<span><b>${area}</b><small>${data.completed}/${data.total} · ${data.minutes} min</small></span>`).join("")
+    : `<span><b>Sin impacto medido</b><small>Agrega tareas para leer la semana.</small></span>`;
+  return `<section class="weekly-preclose">
+    <div class="calendar-title-row">
+      <div>
+        <span class="eyebrow">Pre-cierre semanal</span>
+        <h4>Revisión antes de cerrar la semana</h4>
+      </div>
+      <div class="calendar-actions">
+        <button class="soft-btn" data-preclose-help="${profile.id}">Por qué revisar antes de cerrar</button>
+        <button class="primary-btn" data-prepare-next-week="${profile.id}">Preparar siguiente semana</button>
+      </div>
+    </div>
+    <div class="preclose-grid">
+      <div class="preclose-card ${report.progress.className}">
+        <span class="eyebrow">Avance semanal</span>
+        <strong>${report.totalTasks ? `${report.progressPercent}%` : "Sin tareas"}</strong>
+        <small>${report.progress.label}</small>
+      </div>
+      <div class="preclose-card">
+        <span class="eyebrow">Cierre semanal</span>
+        <strong>${dayLabel(report.closeDay)}</strong>
+        <small>${closePhrase}</small>
+      </div>
+      <div class="preclose-card">
+        <span class="eyebrow">Tareas</span>
+        <strong>${report.completed}/${report.totalTasks}</strong>
+        <small>${report.pending} pendientes</small>
+      </div>
+      <div class="preclose-card workload-${report.workloadAverage > 90 ? "saturated" : report.workloadAverage > 70 ? "high" : report.workloadAverage > 45 ? "moderate" : "healthy"}">
+        <span class="eyebrow">Carga promedio</span>
+        <strong>${workloadPercentLabel(report.workloadAverage)}</strong>
+        <small>${report.saturatedDays} días saturados</small>
+      </div>
+      <div class="preclose-card">
+        <span class="eyebrow">Tiempo</span>
+        <strong>${report.totalPlanned} min</strong>
+        <small>${report.totalWeighted} min ponderados</small>
+      </div>
+      <div class="preclose-card ${report.protectedWithTasks ? "status-red" : "status-neutral"}">
+        <span class="eyebrow">Descanso invadido</span>
+        <strong>${report.protectedWithTasks}</strong>
+        <small>días protegidos con tareas</small>
+      </div>
+    </div>
+    <div class="preclose-recommendation">
+      <span class="eyebrow">Recomendación del sistema</span>
+      <p>${escapeHtml(report.recommendation)}</p>
+    </div>
+    ${closePressure}
+    <div class="impact-panel">
+      <div><span class="eyebrow">Impacto semanal básico</span><p>Lectura aproximada según tareas manuales, texto y futuras áreas de rol.</p></div>
+      <div class="impact-chips">${impactHtml}</div>
+    </div>
+    <div class="next-week-panel">
+      <div>
+        <span class="eyebrow">Siguiente semana preparada</span>
+        ${nextPlan ? `<p>Cierre propuesto: <strong>${dayLabel(nextAvailability.weeklyCloseDay)}</strong> · Máx. <strong>${nextAvailability.maxDailyBusinessHours || 3} h/día</strong> · ${nextStats.available} disponibles · ${nextStats.light} ligeros · ${nextStats.protectedDays} protegidos.</p>` : `<p>No has preparado la disponibilidad de la siguiente semana todavía.</p>`}
+        ${nextWarning ? `<small class="next-warning">${escapeHtml(nextWarning)}</small>` : ""}
+      </div>
+    </div>
+  </section>`;
 }
 
 
@@ -598,6 +786,7 @@ function subscribeAll() {
   subscribeCol("tasks", { order: "order" });
   subscribeCol("profiles");
   subscribeCol("profileWeeklyTasks");
+  subscribeCol("profileNextWeekPlans");
   subscribeCol("roles");
   subscribeCol("products");
   subscribeCol("audit");
@@ -1323,6 +1512,7 @@ function renderProfiles() {
         <div class="availability-days">${dayChips}</div>
       </div>
       ${renderWeeklyCalendar(p)}
+      ${renderWeeklyPreClose(p)}
       <p class="profile-notes">${p.notes || "Sin notas todavía. Este espacio debe usarse para límites, responsabilidades y contexto de trabajo."}</p>
       <div class="small-actions">
         <button class="soft-btn" data-edit-profile="${p.id}">Editar perfil</button>
@@ -1348,6 +1538,8 @@ function renderProfiles() {
   $$(`[data-profile-info]`).forEach(btn => btn.addEventListener("click", () => openProfileImportance(btn.dataset.profileInfo)));
   $$(`[data-calendar-help]`).forEach(btn => btn.addEventListener("click", () => openCalendarHelp(btn.dataset.calendarHelp)));
   $$(`[data-workload-help]`).forEach(btn => btn.addEventListener("click", () => openWorkloadHelp(btn.dataset.workloadHelp)));
+  $$(`[data-preclose-help]`).forEach(btn => btn.addEventListener("click", () => openPreCloseHelp(btn.dataset.precloseHelp)));
+  $$(`[data-prepare-next-week]`).forEach(btn => btn.addEventListener("click", () => prepareNextWeek(btn.dataset.prepareNextWeek)));
   $$(`[data-add-weekly-task]`).forEach(btn => btn.addEventListener("click", () => {
     const [profileId, dayKey] = btn.dataset.addWeeklyTask.split(":");
     addWeeklyTask(profileId, dayKey);
@@ -1487,6 +1679,103 @@ function openWorkloadHelp(id) {
       <div class="learning-box"><span class="eyebrow">Intensidad</span><p>Baja pesa 1.0, media pesa 1.2 y alta pesa 1.5. Una hora intensa no cansa igual que una hora de revisión suave.</p></div>
       <div class="learning-box"><span class="eyebrow">Lectura</span><p>Verde: sano. Amarillo: moderado. Naranja: alto. Rojo: saturado. Trabajar más no siempre significa avanzar mejor si se descuida descanso, marketing, ventas o análisis.</p></div>
     </div>`
+  });
+}
+
+
+function openPreCloseHelp(id) {
+  const profile = (cache.profiles || []).find(x => x.id === id);
+  openInfoModal({
+    eyebrow: "Pre-cierre semanal",
+    title: profile?.name ? `Por qué revisar antes de cerrar — ${profile.name}` : "Por qué revisar antes de cerrar",
+    html: `<div class="learning-stack">
+      <div class="learning-box"><span class="eyebrow">Para qué existe</span><p>El pre-cierre evita llegar al cierre semanal sin contexto. Te permite ver avance, pendientes, carga y descanso antes de prometer otra semana heroica.</p></div>
+      <div class="learning-box"><span class="eyebrow">Qué protege</span><p>Protege constancia, foco y energía. The 86 Club debe avanzar como negocio paralelo realista, no como una segunda jornada completa disfrazada de sueño bonito.</p></div>
+      <div class="learning-box"><span class="eyebrow">Qué lee</span><p>Cuenta tareas hechas, pendientes, minutos, intensidad, días saturados y tareas colocadas en días protegidos. Todavía no es cierre final, es revisión previa.</p></div>
+      <div class="learning-box"><span class="eyebrow">Cómo ayuda al negocio</span><p>Sirve para detectar si la semana se fue a operación manual, diseño, marketing, Shopify o datos. Más adelante esta lectura se conectará con roles y equilibrio de compañía.</p></div>
+      <div class="learning-box"><span class="eyebrow">Siguiente semana</span><p>Antes de cerrar, puedes preparar disponibilidad futura. Eso evita planear desde ilusión y ayuda a repartir tareas según trabajo externo, descanso y horas máximas recomendadas.</p></div>
+    </div>`
+  });
+}
+
+function cloneAvailabilityForNextWeek(profile) {
+  return normalizeAvailability(profile.availability);
+}
+
+async function prepareNextWeek(id) {
+  const profile = (cache.profiles || []).find(x => x.id === id);
+  if (!profile) return;
+  const existing = getNextWeekPlan(id);
+  const availability = normalizeAvailability(existing?.availability || cloneAvailabilityForNextWeek(profile));
+  const root = document.querySelector("#modalRoot");
+  root.innerHTML = `<div class="modal-backdrop active">
+    <div class="modal-card wide-modal">
+      <button class="modal-close" data-modal-close>×</button>
+      <div class="modal-title"><span class="eyebrow">Preparar siguiente semana</span><h3>${escapeHtml(profile.name || "Perfil")}</h3><p>Confirma o ajusta la disponibilidad futura sin reemplazar todavía la semana actual. Esto quedará listo para el cierre semanal avanzado.</p></div>
+      <div class="learning-box modal-learning"><span class="eyebrow">Por qué importa</span><p>Prometer demasiado para la próxima semana crea presión falsa. Esta configuración obliga a mirar trabajo externo, descanso y capacidad real antes de distribuir tareas.</p></div>
+      <form id="nextWeekForm" class="record-form">
+        <div class="form-grid">
+          <label class="field">
+            <div class="field-label-box"><span>Máximo recomendado de horas diarias</span><small>Base sana sugerida: 3 horas.</small></div>
+            <div class="field-input-box"><input name="maxDailyBusinessHours" type="number" min="0" step="0.5" value="${escapeAttr(availability.maxDailyBusinessHours || 3)}" /></div>
+          </label>
+          <label class="field">
+            <div class="field-label-box"><span>Día de cierre semanal propuesto</span><small>Mejor en día ligero o disponible.</small></div>
+            <div class="field-input-box"><select name="weeklyCloseDay">${WEEK_DAYS.map(d => `<option value="${d.key}" ${availability.weeklyCloseDay === d.key ? "selected" : ""}>${d.label}</option>`).join("")}</select></div>
+          </label>
+        </div>
+        <div class="availability-editor next-week-editor">
+          ${WEEK_DAYS.map(d => {
+            const day = availability.days[d.key] || {};
+            return `<div class="availability-row">
+              <div class="availability-row-title"><strong>${d.label}</strong><small>Define cómo tratar la próxima semana este día.</small></div>
+              <select name="day_${d.key}_mode">${DAY_MODE_OPTIONS.map(o => `<option value="${o.value}" ${day.mode === o.value ? "selected" : ""}>${o.label}</option>`).join("")}</select>
+              <input name="day_${d.key}_hours" type="number" min="0" step="0.5" placeholder="Horas opcionales" value="${escapeAttr(day.customHours || "")}" />
+            </div>`;
+          }).join("")}
+        </div>
+        <label class="field full">
+          <div class="field-label-box"><span>Notas para la próxima semana</span><small>Turnos, cansancio esperado, límites o prioridades.</small></div>
+          <div class="field-input-box"><textarea name="notes" placeholder="Ejemplo: semana pesada en el trabajo, dejar domingo protegido.">${escapeHtml(availability.notes || existing?.notes || "")}</textarea></div>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="soft-btn" data-modal-close>Cancelar</button>
+          <button type="submit" class="primary-btn">Guardar siguiente semana</button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+  root.querySelectorAll("[data-modal-close]").forEach(btn => btn.addEventListener("click", closeModal));
+  root.querySelector(".modal-backdrop").addEventListener("click", (e) => { if (e.target.classList.contains("modal-backdrop")) closeModal(); });
+  root.querySelector("#nextWeekForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const nextAvailability = {
+      weeklyCloseDay: form.elements.weeklyCloseDay.value,
+      maxDailyBusinessHours: Number(form.elements.maxDailyBusinessHours.value || 3),
+      notes: form.elements.notes.value.trim(),
+      days: {}
+    };
+    WEEK_DAYS.forEach(d => {
+      nextAvailability.days[d.key] = {
+        mode: form.elements[`day_${d.key}_mode`].value,
+        customHours: form.elements[`day_${d.key}_hours`].value
+      };
+    });
+    await setDoc(workspaceDoc("profileNextWeekPlans", id), {
+      profileId: id,
+      profileName: profile.name || "Perfil",
+      availability: nextAvailability,
+      notes: nextAvailability.notes,
+      plannedCloseDay: nextAvailability.weeklyCloseDay,
+      maxDailyBusinessHours: nextAvailability.maxDailyBusinessHours,
+      updatedAt: serverTimestamp(),
+      updatedBy: currentUser.email,
+      createdAt: existing?.createdAt || serverTimestamp(),
+      createdBy: existing?.createdBy || currentUser.email
+    }, { merge: true });
+    await logActivity("prepare_next_week", "profiles", `${profile.name || "Perfil"} preparó disponibilidad para la próxima semana`);
+    closeModal();
   });
 }
 

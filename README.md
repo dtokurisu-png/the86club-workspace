@@ -1,6 +1,5 @@
-# The 86 Club Workspace V4.6
+# The 86 Club Workspace — V4.7
 
-Actualización: carga diaria y riesgo de saturación por perfil.
+V4.7 agrega pre-cierre semanal por perfil y preparación de disponibilidad para la siguiente semana.
 
-Summary sugerido para GitHub Desktop:
-Add daily workload risk v4.6
+Summary para GitHub Desktop: Add weekly pre-close planning v4.7
