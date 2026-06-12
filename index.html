@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <div id="app" class="app-shell">
+  <div id="appShell" class="shell">
     <aside class="sidebar">
       <div class="brand-block">
         <div class="brand-mark">86</div>
@@ -16,49 +16,68 @@
           <p>Workspace</p>
         </div>
       </div>
-
-      <nav class="nav-list" aria-label="Workspace navigation">
-        <button class="nav-item active" data-view="dashboard">Dashboard</button>
-        <button class="nav-item" data-view="stage-01">Etapa 1 · Roles</button>
-        <button class="nav-item" data-view="stage-02">Etapa 2 · Base estratégica</button>
-        <button class="nav-item" data-view="products">Productos</button>
-        <button class="nav-item" data-view="audit">Auditoría Shopify</button>
-        <button class="nav-item" data-view="competitors">Competidores</button>
-        <button class="nav-item" data-view="promotion">Plan de promoción</button>
-        <button class="nav-item" data-view="files">Archivos</button>
-        <button class="nav-item" data-view="activity">Actividad</button>
-        <button class="nav-item" data-view="decisions">Decisiones</button>
-        <button class="nav-item" data-view="settings">Configuración</button>
+      <nav class="nav" aria-label="Workspace sections">
+        <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+        <button class="nav-btn" data-view="stages">Etapas</button>
+        <button class="nav-btn" data-view="roles">Roles</button>
+        <button class="nav-btn" data-view="products">Productos</button>
+        <button class="nav-btn" data-view="audit">Auditoría tienda</button>
+        <button class="nav-btn" data-view="competitors">Competidores</button>
+        <button class="nav-btn" data-view="promotion">Plan promoción</button>
+        <button class="nav-btn" data-view="files">Archivos Drive</button>
+        <button class="nav-btn" data-view="decisions">Decisiones</button>
+        <button class="nav-btn" data-view="activity">Actividad</button>
       </nav>
+      <div class="sidebar-footer">
+        <button id="themeToggle" class="ghost-btn" type="button">Modo día</button>
+        <button id="signOutBtn" class="ghost-btn danger hidden" type="button">Salir</button>
+      </div>
     </aside>
 
-    <main class="main-panel">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">Private operating system</p>
-          <h2 id="pageTitle">Dashboard</h2>
+    <main class="main">
+      <section id="loginView" class="login-card">
+        <div class="login-copy">
+          <span class="eyebrow">Private workspace</span>
+          <h2>Entrar al centro operativo</h2>
+          <p>Usa el correo autorizado de The 86 Club. Los datos se guardan en Firestore y los archivos viven como enlaces de Google Drive.</p>
         </div>
-        <div class="topbar-actions">
-          <button id="themeToggle" class="ghost-button" type="button">Modo día</button>
-          <button id="loginButton" class="primary-button" type="button">Iniciar sesión</button>
-          <button id="logoutButton" class="ghost-button hidden" type="button">Salir</button>
-        </div>
-      </header>
-
-      <section id="loginPanel" class="login-panel hidden">
-        <div class="card login-card">
-          <h3>Entrar al workspace</h3>
-          <p>Esta pantalla queda lista para conectar Firebase Authentication.</p>
-          <label>Email<input id="emailInput" type="email" placeholder="correo@ejemplo.com" /></label>
-          <label>Contraseña<input id="passwordInput" type="password" placeholder="••••••••" /></label>
-          <button id="submitLogin" class="primary-button" type="button">Entrar</button>
-          <p id="loginMessage" class="small-note"></p>
-        </div>
+        <form id="loginForm" class="login-form">
+          <label>Email<input id="loginEmail" type="email" autocomplete="email" required /></label>
+          <label>Contraseña<input id="loginPassword" type="password" autocomplete="current-password" required /></label>
+          <button class="primary-btn" type="submit">Iniciar sesión</button>
+          <p id="loginError" class="error-text"></p>
+        </form>
       </section>
 
-      <section id="content" class="content-grid"></section>
+      <section id="workspaceView" class="workspace hidden">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow" id="currentViewEyebrow">Dashboard</span>
+            <h2 id="viewTitle">The 86 Club Workspace</h2>
+          </div>
+          <div class="user-chip" id="userChip">Sin sesión</div>
+        </header>
+
+        <section id="dashboard" class="view active-view"></section>
+        <section id="stages" class="view"></section>
+        <section id="roles" class="view"></section>
+        <section id="products" class="view"></section>
+        <section id="audit" class="view"></section>
+        <section id="competitors" class="view"></section>
+        <section id="promotion" class="view"></section>
+        <section id="files" class="view"></section>
+        <section id="decisions" class="view"></section>
+        <section id="activity" class="view"></section>
+      </section>
     </main>
   </div>
+
+  <template id="emptyStateTemplate">
+    <div class="empty-state">
+      <h3>Sin registros todavía</h3>
+      <p>Agrega el primer registro para que el workspace empiece a respirar.</p>
+    </div>
+  </template>
 
   <script type="module" src="./app.js"></script>
 </body>

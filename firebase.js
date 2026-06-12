@@ -1,14 +1,17 @@
-// firebase.js
-// Pega aquí el firebaseConfig cuando lo tengas desde Firebase Console.
-// No pongas contraseñas ni tokens privados en este archivo.
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-export const firebaseConfig = {
-  apiKey: "PASTE_API_KEY_HERE",
-  authDomain: "PASTE_AUTH_DOMAIN_HERE",
-  projectId: "PASTE_PROJECT_ID_HERE",
-  storageBucket: "PASTE_STORAGE_BUCKET_HERE",
-  messagingSenderId: "PASTE_MESSAGING_SENDER_ID_HERE",
-  appId: "PASTE_APP_ID_HERE"
+const firebaseConfig = {
+  apiKey: "AIzaSyA8a3xETEZiimdSEZUctUWxNTzam_Lx5vw",
+  authDomain: "the86club-workspace.firebaseapp.com",
+  projectId: "the86club-workspace",
+  storageBucket: "the86club-workspace.firebasestorage.app",
+  messagingSenderId: "719700910835",
+  appId: "1:719700910835:web:c571c5ac29b60e56fa4d86"
 };
 
-export const firebaseReady = false;
+export const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const WORKSPACE_ID = "the86club";
