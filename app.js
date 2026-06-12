@@ -91,106 +91,6 @@ const stageSeeds = [
   }
 ];
 
-const PROFILE_SEEDS = [
-  {
-    id: "christopher",
-    name: "Christopher",
-    email: "",
-    avatarUrl: "",
-    primaryRole: "Pendiente",
-    subRoles: "",
-    weeklyLoadStatus: "Sin configurar",
-    availability: defaultAvailability(),
-    notes: "Perfil base para dirección y operación de The 86 Club. Completar con rol principal, disponibilidad semanal y límites de trabajo."
-  },
-  {
-    id: "adrian",
-    name: "Adrián",
-    email: "",
-    avatarUrl: "",
-    primaryRole: "Pendiente",
-    subRoles: "",
-    weeklyLoadStatus: "Sin configurar",
-    availability: defaultAvailability(),
-    notes: "Perfil base para definir responsabilidades, disponibilidad semanal, ritmo creativo y participación dentro del sistema."
-  }
-];
-
-const STAGE_GUIDANCE = {
-  stage_01_roles: {
-    area: "Equipo / Dirección interna",
-    lesson: "Esta etapa enseña a separar responsabilidades antes de acelerar. Un equipo pequeño puede hacer muchas cosas, pero si nadie tiene un carril claro, el proyecto se vuelve impulso, cansancio y doble trabajo.",
-    why: "Ayuda a que Christopher y Adrián sepan qué decisiones les corresponden, qué deben revisar juntos y qué límites protegen la energía creativa y comercial del negocio.",
-    outcome: "Perfiles base, responsabilidades claras, flujo inicial de revisión y primeras decisiones del equipo."
-  },
-  stage_02_strategy: {
-    area: "Marca / Posicionamiento",
-    lesson: "Esta etapa enseña a convertir una marca bonita en una marca entendible. Antes de producir más piezas, el negocio necesita saber qué promete, a quién le habla y qué palabras no debe usar.",
-    why: "Una estrategia clara evita diseños desconectados, mensajes flojos y campañas que no explican por qué alguien debería comprar The 86 Club.",
-    outcome: "Lenguaje de marca, cliente inicial, producto base y dirección comercial para el Drop."
-  },
-  stage_03_shopify: {
-    area: "Tienda / Conversión",
-    lesson: "Esta etapa enseña a mirar Shopify como un vendedor silencioso. Cada imagen, botón, descripción y flujo móvil debe ayudar a que una persona entienda, confíe y compre.",
-    why: "Si la tienda no comunica valor rápido, el marketing trae visitas que se evaporan. Auditar evita gastar energía en promoción antes de arreglar puntos que frenan la compra.",
-    outcome: "Capturas, revisión por sección, problemas detectados y mejoras priorizadas para vender mejor."
-  },
-  stage_04_promotion: {
-    area: "Marketing / Divulgación",
-    lesson: "Esta etapa enseña a promover con intención. No se trata de publicar por ansiedad, sino de conectar producto, mensaje, canal y seguimiento.",
-    why: "Un negocio POD necesita visibilidad constante, pero también necesita evitar ruido. Esta etapa ayuda a publicar con propósito y medir qué canal merece atención.",
-    outcome: "Canales definidos, campaña inicial, responsables, mensajes y señales de rendimiento."
-  },
-  stage_05_numbers: {
-    area: "Finanzas / Decisión",
-    lesson: "Esta etapa enseña a tomar decisiones con números. Invertir, vender y gastar en ads debe verse junto para saber si el proyecto está avanzando o solo consumiendo recursos.",
-    why: "Sin datos financieros básicos, el negocio puede sentirse activo aunque esté desequilibrado. Esta etapa conecta inversión, ventas y participación estimada.",
-    outcome: "Aportes, ventas, ads, balance simple y señales para decidir qué ajustar."
-  }
-};
-
-function getStageGuide(stage) {
-  return STAGE_GUIDANCE[stage.id] || {
-    area: "Área de trabajo",
-    lesson: "Esta etapa ordena una parte del negocio para que el equipo aprenda, ejecute y revise con más claridad.",
-    why: "La etapa existe para evitar trabajo suelto: cada tarea debe conectar con una mejora real del negocio.",
-    outcome: "Tareas claras, progreso visible y próximos pasos mejor definidos."
-  };
-}
-
-function isStageCollapsed(stageId) {
-  return localStorage.getItem(`the86_stage_${stageId}`) !== "open";
-}
-
-function setStageCollapsed(stageId, collapsed) {
-  localStorage.setItem(`the86_stage_${stageId}`, collapsed ? "closed" : "open");
-}
-
-const viewTitles = {
-  dashboard: "The 86 Club Workspace",
-  stages: "Etapas de trabajo",
-  profiles: "Perfiles del equipo",
-  roles: "Roles del equipo",
-  products: "Productos y colecciones",
-  audit: "Auditoría de tienda",
-  competitors: "Investigación de competidores",
-  promotion: "Plan de promoción",
-  investments: "Inversiones y participación",
-  commercial: "Ventas y datos comerciales",
-  stats: "Estadísticas del negocio",
-  diagnosis: "Diagnóstico estratégico",
-  files: "Archivos y recursos de Drive",
-  decisions: "Registro de decisiones",
-  activity: "Actividad del equipo"
-};
-
-function workspaceDoc(...parts) { return doc(db, ...workspacePath, ...parts); }
-function workspaceCol(...parts) { return collection(db, ...workspacePath, ...parts); }
-function money(n) { return `$${Number(n || 0).toFixed(2)}`; }
-function num(n) { return Number(n || 0); }
-function pct(n) { return `${Number(n || 0).toFixed(1)}%`; }
-
-
 const WEEK_DAYS = [
   { key: "monday", label: "Lunes" },
   { key: "tuesday", label: "Martes" },
@@ -307,6 +207,107 @@ function weeklyCalendarSummary(profile, tasks) {
     completed
   };
 }
+
+
+const PROFILE_SEEDS = [
+  {
+    id: "christopher",
+    name: "Christopher",
+    email: "",
+    avatarUrl: "",
+    primaryRole: "Pendiente",
+    subRoles: "",
+    weeklyLoadStatus: "Sin configurar",
+    availability: defaultAvailability(),
+    notes: "Perfil base para dirección y operación de The 86 Club. Completar con rol principal, disponibilidad semanal y límites de trabajo."
+  },
+  {
+    id: "adrian",
+    name: "Adrián",
+    email: "",
+    avatarUrl: "",
+    primaryRole: "Pendiente",
+    subRoles: "",
+    weeklyLoadStatus: "Sin configurar",
+    availability: defaultAvailability(),
+    notes: "Perfil base para definir responsabilidades, disponibilidad semanal, ritmo creativo y participación dentro del sistema."
+  }
+];
+
+const STAGE_GUIDANCE = {
+  stage_01_roles: {
+    area: "Equipo / Dirección interna",
+    lesson: "Esta etapa enseña a separar responsabilidades antes de acelerar. Un equipo pequeño puede hacer muchas cosas, pero si nadie tiene un carril claro, el proyecto se vuelve impulso, cansancio y doble trabajo.",
+    why: "Ayuda a que Christopher y Adrián sepan qué decisiones les corresponden, qué deben revisar juntos y qué límites protegen la energía creativa y comercial del negocio.",
+    outcome: "Perfiles base, responsabilidades claras, flujo inicial de revisión y primeras decisiones del equipo."
+  },
+  stage_02_strategy: {
+    area: "Marca / Posicionamiento",
+    lesson: "Esta etapa enseña a convertir una marca bonita en una marca entendible. Antes de producir más piezas, el negocio necesita saber qué promete, a quién le habla y qué palabras no debe usar.",
+    why: "Una estrategia clara evita diseños desconectados, mensajes flojos y campañas que no explican por qué alguien debería comprar The 86 Club.",
+    outcome: "Lenguaje de marca, cliente inicial, producto base y dirección comercial para el Drop."
+  },
+  stage_03_shopify: {
+    area: "Tienda / Conversión",
+    lesson: "Esta etapa enseña a mirar Shopify como un vendedor silencioso. Cada imagen, botón, descripción y flujo móvil debe ayudar a que una persona entienda, confíe y compre.",
+    why: "Si la tienda no comunica valor rápido, el marketing trae visitas que se evaporan. Auditar evita gastar energía en promoción antes de arreglar puntos que frenan la compra.",
+    outcome: "Capturas, revisión por sección, problemas detectados y mejoras priorizadas para vender mejor."
+  },
+  stage_04_promotion: {
+    area: "Marketing / Divulgación",
+    lesson: "Esta etapa enseña a promover con intención. No se trata de publicar por ansiedad, sino de conectar producto, mensaje, canal y seguimiento.",
+    why: "Un negocio POD necesita visibilidad constante, pero también necesita evitar ruido. Esta etapa ayuda a publicar con propósito y medir qué canal merece atención.",
+    outcome: "Canales definidos, campaña inicial, responsables, mensajes y señales de rendimiento."
+  },
+  stage_05_numbers: {
+    area: "Finanzas / Decisión",
+    lesson: "Esta etapa enseña a tomar decisiones con números. Invertir, vender y gastar en ads debe verse junto para saber si el proyecto está avanzando o solo consumiendo recursos.",
+    why: "Sin datos financieros básicos, el negocio puede sentirse activo aunque esté desequilibrado. Esta etapa conecta inversión, ventas y participación estimada.",
+    outcome: "Aportes, ventas, ads, balance simple y señales para decidir qué ajustar."
+  }
+};
+
+function getStageGuide(stage) {
+  return STAGE_GUIDANCE[stage.id] || {
+    area: "Área de trabajo",
+    lesson: "Esta etapa ordena una parte del negocio para que el equipo aprenda, ejecute y revise con más claridad.",
+    why: "La etapa existe para evitar trabajo suelto: cada tarea debe conectar con una mejora real del negocio.",
+    outcome: "Tareas claras, progreso visible y próximos pasos mejor definidos."
+  };
+}
+
+function isStageCollapsed(stageId) {
+  return localStorage.getItem(`the86_stage_${stageId}`) !== "open";
+}
+
+function setStageCollapsed(stageId, collapsed) {
+  localStorage.setItem(`the86_stage_${stageId}`, collapsed ? "closed" : "open");
+}
+
+const viewTitles = {
+  dashboard: "The 86 Club Workspace",
+  stages: "Etapas de trabajo",
+  profiles: "Perfiles del equipo",
+  roles: "Roles del equipo",
+  products: "Productos y colecciones",
+  audit: "Auditoría de tienda",
+  competitors: "Investigación de competidores",
+  promotion: "Plan de promoción",
+  investments: "Inversiones y participación",
+  commercial: "Ventas y datos comerciales",
+  stats: "Estadísticas del negocio",
+  diagnosis: "Diagnóstico estratégico",
+  files: "Archivos y recursos de Drive",
+  decisions: "Registro de decisiones",
+  activity: "Actividad del equipo"
+};
+
+function workspaceDoc(...parts) { return doc(db, ...workspacePath, ...parts); }
+function workspaceCol(...parts) { return collection(db, ...workspacePath, ...parts); }
+function money(n) { return `$${Number(n || 0).toFixed(2)}`; }
+function num(n) { return Number(n || 0); }
+function pct(n) { return `${Number(n || 0).toFixed(1)}%`; }
+
 
 function renderWeeklyCalendar(profile) {
   const availability = normalizeAvailability(profile.availability);
