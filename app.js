@@ -978,6 +978,13 @@ async function ensureWorkspaceSeed() {
       await setDoc(pref, { ...profile, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: currentUser.email });
     }
   }
+  const roleRef = workspaceDoc("roles", STRATEGIC_DIRECTION_ROLE.id);
+  const roleSnap = await getDoc(roleRef);
+  if (!roleSnap.exists()) {
+    await setDoc(roleRef, { ...STRATEGIC_DIRECTION_ROLE, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: currentUser.email });
+  } else {
+    await updateDoc(roleRef, { ...STRATEGIC_DIRECTION_ROLE, updatedAt: serverTimestamp() });
+  }
 }
 
 function subscribeCol(name, opts = {}) {
@@ -1070,6 +1077,8 @@ const COLLECTION_LABELS = {
 
 const ROLE_OPTIONS = [
   "Pendiente",
+  "Dirección estratégica del negocio",
+  "Administración del workspace",
   "Dirección de marca",
   "Dirección visual",
   "Diseño conceptual",
@@ -1083,6 +1092,491 @@ const ROLE_OPTIONS = [
   "Operaciones & archivos",
   "Finanzas & participación"
 ];
+
+
+const STRATEGIC_DIRECTION_ROLE = {
+  id: "role_strategic_direction",
+  title: "Dirección estratégica del negocio",
+  name: "Dirección estratégica del negocio",
+  area: "Dirección general",
+  status: "catalog",
+  locked: true,
+  maturity: "1.5.1",
+  shortDescription: "Mantiene The 86 Club enfocado en acciones que construyen, venden, miden y mejoran el negocio.",
+  purpose: "Mantener The 86 Club enfocado en las acciones que realmente construyen, venden, miden y mejoran el negocio, evitando dispersión, exceso creativo, cambios impulsivos y trabajo sin impacto comercial claro.",
+  whyItMatters: "The 86 Club es un negocio pequeño con recursos limitados, dos personas, producción POD, Shopify, marketing, diseño, finanzas y operación. Sin dirección estratégica, el proyecto puede moverse por impulso: crear demasiado arte, tocar la tienda sin medir, gastar en publicidad sin leer datos o trabajar muchas horas sin avance real.",
+  coreResponsibility: "Decidir el foco semanal del negocio y proteger que las tareas de la semana respondan a una prioridad real.",
+  healthRule: "Este rol debe proteger la salud física y mental del usuario. La estrategia no debe convertirse en más carga; debe ordenar la carga. Si hay pocos días disponibles o muchos roles activos, el sistema debe priorizar lo esencial, reducir alcance y advertir sobre saturación.",
+  focusRule: "Al conectar roles con calendario, el sistema debe intentar agrupar el trabajo por rol/día: primero 1 rol por día cuando sea posible. Si hay pocos días disponibles, puede combinar roles, pero priorizando el rol de mayor impacto según los datos del workspace y manteniendo la carga dentro de las horas recomendadas.",
+  taskEcosystemNote: "Más adelante cada tarea de este rol tendrá su propio ecosistema: una ventana grande de trabajo guiado con pasos, contexto, evidencia, criterios de calidad, impacto esperado y cierre de tarea.",
+  responsibilities: [
+    "Definir prioridades semanales.",
+    "Revisar si el negocio está equilibrado entre diseño, marketing, producto, Shopify, ventas, finanzas y operación.",
+    "Detectar exceso creativo, exceso operativo o gasto publicitario sin lectura.",
+    "Decidir qué tareas se hacen esta semana y cuáles deben esperar.",
+    "Conectar tareas con ventas, tráfico, conversión, marca, finanzas y carga del equipo.",
+    "Convertir datos en decisiones registradas.",
+    "Proteger la carga de Christopher y Adrián para evitar semanas heroicas imposibles."
+  ],
+  avoid: [
+    "Absorber todas las tareas del negocio.",
+    "Convertir cada idea nueva en tarea inmediata.",
+    "Aprobar diseños solo porque se ven bonitos sin revisar si ayudan a vender o fortalecer marca.",
+    "Cambiar Shopify o campañas sin razón medible.",
+    "Confundir trabajar muchas horas con avanzar bien.",
+    "Invadir días protegidos de descanso salvo decisión manual consciente."
+  ],
+  weeklyTasks: [
+    { title: "Revisión estratégica semanal", duration: 60, intensity: "media", frequency: "1 vez por semana", suggestedMoment: "Antes del cierre", priority: "alta", businessImpact: "Define qué se logró, qué se trabó y qué debe corregirse." },
+    { title: "Definir foco semanal", duration: 45, intensity: "media", frequency: "1 vez por semana", suggestedMoment: "Inicio de semana", priority: "alta", businessImpact: "Evita que la semana se fragmente en tareas bonitas pero dispersas." },
+    { title: "Revisar equilibrio del negocio", duration: 30, intensity: "media", frequency: "1 vez por semana", suggestedMoment: "Mitad o cierre", priority: "alta", businessImpact: "Detecta si el negocio se fue demasiado a diseño, tienda, ads o tareas sin ventas." },
+    { title: "Revisar decisiones pendientes", duration: 30, intensity: "baja/media", frequency: "1 vez por semana", suggestedMoment: "Bloque estratégico", priority: "media", businessImpact: "Cierra dudas y evita repetir conversaciones." },
+    { title: "Revisar métricas base del negocio", duration: 45, intensity: "media", frequency: "1 vez por semana", suggestedMoment: "Cierre o pre-cierre", priority: "alta", businessImpact: "Conecta esfuerzo con ventas, tráfico, conversión, gasto y carga." }
+  ],
+  lightTasks: [
+    { title: "Chequeo rápido de dirección", duration: 10, intensity: "baja", frequency: "2 a 4 veces por semana, opcional", suggestedMoment: "Día ligero", priority: "media", businessImpact: "Confirma que el trabajo del día no contradice el foco semanal." },
+    { title: "Registro de decisión rápida", duration: 15, intensity: "baja", frequency: "Cuando aparezca una decisión", suggestedMoment: "Cualquier día disponible", priority: "media", businessImpact: "Guarda por qué se decidió algo y evita ruido futuro." }
+  ],
+  metrics: [
+    "Ventas totales", "Órdenes", "Ingresos netos", "Tasa de conversión", "Ticket promedio", "Gasto en ads", "Tráfico/sesiones", "Productos más vendidos o más vistos", "Tareas completadas", "Tareas pendientes", "Carga semanal por perfil", "Días saturados", "Áreas más trabajadas de la semana"
+  ],
+  greenSignals: [
+    "La semana tiene un foco claro.",
+    "Las tareas están distribuidas sin saturar.",
+    "Hay equilibrio entre diseño, marketing, tienda y ventas.",
+    "Las decisiones importantes quedan registradas.",
+    "Se revisan datos antes de cambiar dirección.",
+    "Hay avance medible aunque sea pequeño."
+  ],
+  yellowSignals: [
+    "Hay muchas ideas nuevas y pocas cerradas.",
+    "Se trabaja bastante, pero no queda claro el impacto.",
+    "La semana se carga demasiado hacia diseño o retoques.",
+    "Hay tareas pendientes cerca del cierre semanal.",
+    "Se toman decisiones sin revisar datos.",
+    "Hay varios cambios de prioridad en pocos días."
+  ],
+  redSignals: [
+    "Se crean muchos diseños pero no se promueven.",
+    "Se gasta en publicidad sin revisar ventas o conversión.",
+    "La tienda se modifica constantemente sin criterio.",
+    "El equipo trabaja muchas horas y el negocio no avanza.",
+    "Se ignoran días protegidos de descanso.",
+    "Una persona absorbe demasiados roles.",
+    "No hay foco semanal ni decisiones registradas."
+  ],
+  recommendedLimits: [
+    "2 a 4 horas semanales en etapa inicial.",
+    "1 revisión estratégica grande por semana.",
+    "No cambiar el foco semanal más de una vez salvo emergencia.",
+    "No aprobar más tareas de las que la disponibilidad permite.",
+    "No permitir semanas llenas de diseño si no hay promoción o análisis.",
+    "Mantener 3 horas diarias como base recomendada, ajustable por usuario."
+  ],
+  suggestedWeeklyDistribution: [
+    { moment: "Inicio de semana", work: "Definir foco semanal y prioridades." },
+    { moment: "Mitad de semana", work: "Chequeo ligero para detectar desvíos." },
+    { moment: "Antes del cierre", work: "Revisión estratégica, equilibrio, métricas y decisiones." }
+  ],
+  profileConnection: "Cuando un perfil tenga este rol, deberá mostrar foco estratégico semanal, tareas estratégicas generadas, decisiones pendientes, alertas de exceso y recomendación semanal.",
+  calendarConnection: "Las tareas de este rol deben agruparse en bloques de dirección estratégica. El sistema intentará colocarlas en un solo día disponible o en un día cercano al cierre, respetando horas recomendadas, días ligeros y descanso protegido.",
+  weeklyCloseConnection: "Este rol alimenta el cierre semanal con foco, avances, áreas descuidadas, decisiones, prioridades y lectura de carga.",
+  dashboardConnection: "Este rol alimentará el futuro equilibrio de compañía: creativo, marketing, Shopify, producto, ventas, finanzas, operación, datos y equipo.",
+  taskActivationLogic: [
+    "Si hay ventas bajas y mucha producción creativa, priorizar revisar equilibrio y promoción.",
+    "Si hay gasto en ads sin ventas, priorizar métricas y decisiones de campaña.",
+    "Si hay muchos pendientes cerca del cierre, priorizar foco y reducción de alcance.",
+    "Si hay días saturados, priorizar redistribución y protección de descanso.",
+    "Si hay pocos datos, priorizar registro y lectura básica antes de tomar decisiones grandes."
+  ]
+};
+
+
+const STRATEGIC_ROLE_ID = "strategic_direction";
+const STRATEGIC_ROLE_NAME = "Dirección estratégica del negocio";
+const STRATEGIC_ROLE_TASK_BANK = [
+  {
+    id: "define_weekly_focus",
+    title: "Definir foco semanal del negocio",
+    description: "Elegir la prioridad central de la semana para evitar dispersión entre diseño, tienda, marketing, ventas y operación.",
+    objective: "Convertir la energía de la semana en una dirección concreta.",
+    estimatedMinutes: 45,
+    intensity: "medium",
+    frequency: "weekly",
+    taskType: "focus",
+    businessImpact: "Evita trabajo disperso y facilita que el cierre semanal tenga una intención clara.",
+    activationTags: ["base", "start_week", "no_focus"],
+    suggestedDayMoment: "start",
+    canUseLightDay: false,
+    canUseProtectedDay: false,
+    evidenceRequired: "Foco semanal escrito y razón de prioridad.",
+    priorityBase: 100,
+    ecosystemTemplateId: "ecosystem_strategic_weekly_focus"
+  },
+  {
+    id: "review_business_balance",
+    title: "Revisar equilibrio general del negocio",
+    description: "Mirar si The 86 Club se está cargando demasiado hacia diseño, Shopify, ads, operación o ideas sin venta.",
+    objective: "Detectar áreas excedidas o descuidadas antes de seguir trabajando por inercia.",
+    estimatedMinutes: 30,
+    intensity: "medium",
+    frequency: "weekly",
+    taskType: "balance",
+    businessImpact: "Ayuda a decidir si toca vender, medir, producir, ordenar o pausar.",
+    activationTags: ["base", "imbalance", "design_excess", "workload_high"],
+    suggestedDayMoment: "start",
+    canUseLightDay: false,
+    canUseProtectedDay: false,
+    evidenceRequired: "Resumen de áreas fuertes, débiles y acción correctiva.",
+    priorityBase: 95,
+    ecosystemTemplateId: "ecosystem_strategic_balance_review"
+  },
+  {
+    id: "review_pending_decisions",
+    title: "Revisar decisiones pendientes",
+    description: "Cerrar, pausar o aclarar decisiones que están bloqueando avance o repitiendo conversaciones.",
+    objective: "Reducir ruido mental y dejar registro de decisiones importantes.",
+    estimatedMinutes: 25,
+    intensity: "low",
+    frequency: "weekly",
+    taskType: "decision",
+    businessImpact: "Evita que el equipo gaste energía en dudas repetidas.",
+    activationTags: ["base", "decisions_pending"],
+    suggestedDayMoment: "start",
+    canUseLightDay: true,
+    canUseProtectedDay: false,
+    evidenceRequired: "Decisión registrada, estado o siguiente paso.",
+    priorityBase: 80,
+    ecosystemTemplateId: "ecosystem_strategic_decision_review"
+  },
+  {
+    id: "review_base_metrics",
+    title: "Revisar métricas base del negocio",
+    description: "Leer ventas, inversión, gasto publicitario, tareas completadas y datos comerciales disponibles.",
+    objective: "Decidir con datos en vez de sensación.",
+    estimatedMinutes: 45,
+    intensity: "medium",
+    frequency: "weekly",
+    taskType: "metrics",
+    businessImpact: "Conecta trabajo semanal con ventas, costos, campañas y progreso real.",
+    activationTags: ["has_sales", "has_ads", "has_investment", "has_data"],
+    suggestedDayMoment: "preclose",
+    canUseLightDay: false,
+    canUseProtectedDay: false,
+    evidenceRequired: "Notas de métricas revisadas y decisión derivada.",
+    priorityBase: 75,
+    ecosystemTemplateId: "ecosystem_strategic_metrics_review"
+  },
+  {
+    id: "detect_area_excess_or_neglect",
+    title: "Detectar exceso o descuido por área",
+    description: "Comparar trabajo creativo, marketing, Shopify, finanzas, ventas, operación y datos para saber si una parte está dominando demasiado.",
+    objective: "Evitar que el negocio avance solo en lo cómodo y descuide lo que vende.",
+    estimatedMinutes: 35,
+    intensity: "medium",
+    frequency: "weekly",
+    taskType: "diagnosis",
+    businessImpact: "Permite corregir semanas con demasiado diseño y poca promoción, o demasiado gasto y poca lectura.",
+    activationTags: ["imbalance", "design_excess", "marketing_low", "sales_low"],
+    suggestedDayMoment: "preclose",
+    canUseLightDay: false,
+    canUseProtectedDay: false,
+    evidenceRequired: "Área excedida, área descuidada y ajuste recomendado.",
+    priorityBase: 70,
+    ecosystemTemplateId: "ecosystem_strategic_area_diagnosis"
+  },
+  {
+    id: "prioritize_week_actions",
+    title: "Priorizar acciones de la semana",
+    description: "Elegir pocas acciones concretas que se harán primero según impacto, carga y disponibilidad.",
+    objective: "Convertir revisión estratégica en ejecución realista.",
+    estimatedMinutes: 35,
+    intensity: "medium",
+    frequency: "weekly",
+    taskType: "prioritization",
+    businessImpact: "Reduce listas infinitas y enfoca la energía en lo que más empuja el negocio.",
+    activationTags: ["base", "many_tasks", "planning"],
+    suggestedDayMoment: "start",
+    canUseLightDay: false,
+    canUseProtectedDay: false,
+    evidenceRequired: "Lista corta de prioridades y tareas pausadas.",
+    priorityBase: 85,
+    ecosystemTemplateId: "ecosystem_strategic_prioritize_actions"
+  },
+  {
+    id: "reduce_low_impact_work",
+    title: "Pausar o reducir tareas de bajo impacto",
+    description: "Detectar tareas que consumen tiempo pero no empujan venta, aprendizaje o estabilidad del negocio.",
+    objective: "Bajar carga sin frenar lo esencial.",
+    estimatedMinutes: 20,
+    intensity: "low",
+    frequency: "as_needed",
+    taskType: "scope_control",
+    businessImpact: "Protege salud, tiempo y foco cuando la semana está cargada.",
+    activationTags: ["workload_high", "saturation", "too_many_tasks"],
+    suggestedDayMoment: "any",
+    canUseLightDay: true,
+    canUseProtectedDay: false,
+    evidenceRequired: "Tarea pausada/reducida y motivo.",
+    priorityBase: 60,
+    ecosystemTemplateId: "ecosystem_strategic_reduce_scope"
+  },
+  {
+    id: "record_strategic_decision",
+    title: "Registrar decisión estratégica importante",
+    description: "Guardar una decisión relevante, su motivo, alternativa descartada e impacto esperado.",
+    objective: "Crear memoria del negocio para no decidir dos veces lo mismo.",
+    estimatedMinutes: 15,
+    intensity: "low",
+    frequency: "as_needed",
+    taskType: "decision_log",
+    businessImpact: "Aumenta claridad, continuidad y capacidad de revisar por qué se hizo algo.",
+    activationTags: ["decision_made", "manual"],
+    suggestedDayMoment: "any",
+    canUseLightDay: true,
+    canUseProtectedDay: false,
+    evidenceRequired: "Decisión registrada en el workspace.",
+    priorityBase: 50,
+    ecosystemTemplateId: "ecosystem_strategic_record_decision"
+  },
+  {
+    id: "quick_direction_check",
+    title: "Chequeo rápido de dirección",
+    description: "Confirmar que lo que se está haciendo todavía respeta el foco semanal y la carga sana.",
+    objective: "Corregir desvíos sin crear una reunión pesada.",
+    estimatedMinutes: 10,
+    intensity: "low",
+    frequency: "1-2x_week",
+    taskType: "check",
+    businessImpact: "Evita que una semana se vaya torciendo poco a poco sin que nadie lo note.",
+    activationTags: ["midweek", "light_check"],
+    suggestedDayMoment: "middle",
+    canUseLightDay: true,
+    canUseProtectedDay: false,
+    evidenceRequired: "Nota breve de alineación o ajuste.",
+    priorityBase: 45,
+    ecosystemTemplateId: "ecosystem_strategic_quick_check"
+  },
+  {
+    id: "prepare_preclose_recommendation",
+    title: "Preparar recomendación para el pre-cierre",
+    description: "Convertir lo aprendido en una recomendación concreta para cerrar la semana y preparar la siguiente.",
+    objective: "Llegar al cierre con lectura, no con improvisación.",
+    estimatedMinutes: 25,
+    intensity: "medium",
+    frequency: "weekly",
+    taskType: "preclose",
+    businessImpact: "Mejora la calidad del cierre semanal y la planificación futura.",
+    activationTags: ["preclose", "close_near"],
+    suggestedDayMoment: "preclose",
+    canUseLightDay: true,
+    canUseProtectedDay: false,
+    evidenceRequired: "Recomendación escrita para la próxima semana.",
+    priorityBase: 65,
+    ecosystemTemplateId: "ecosystem_strategic_preclose_recommendation"
+  }
+];
+
+function normalizeRoleText(value = "") {
+  return String(value || "").trim().toLowerCase();
+}
+
+function profileHasStrategicRole(profile = {}) {
+  const primary = normalizeRoleText(profile.primaryRole);
+  const subs = normalizeRoleText(profile.subRoles);
+  return primary === normalizeRoleText(STRATEGIC_ROLE_NAME) || subs.includes(normalizeRoleText(STRATEGIC_ROLE_NAME));
+}
+
+function profileRoleLabels(profile = {}) {
+  const roles = [];
+  if (profile.primaryRole && !["Pendiente", "Sin asignar"].includes(profile.primaryRole)) roles.push(profile.primaryRole);
+  if (profile.subRoles) String(profile.subRoles).split(",").map(x => x.trim()).filter(Boolean).forEach(x => roles.push(x));
+  return roles;
+}
+
+function workspaceSignals(profileId) {
+  const allTasks = cache.profileWeeklyTasks || [];
+  const profileTasks = allTasks.filter(t => t.profileId === profileId);
+  const decisionsPending = (cache.decisions || []).filter(d => !["closed", "completado", "done"].includes(String(d.status || "").toLowerCase())).length;
+  const salesTotal = (cache.salesEntries || []).reduce((a, x) => a + num(x.netSales || x.grossSales), 0);
+  const adSpend = (cache.adEntries || []).reduce((a, x) => a + num(x.amountSpent), 0);
+  const investmentTotal = (cache.investments || []).reduce((a, x) => a + num(x.amount), 0);
+  const designishTasks = profileTasks.filter(t => /diseñ|design|mockup|visual|arte|photoshop|producci/i.test(`${t.title || ""} ${t.description || ""} ${t.roleName || ""}`)).length;
+  const marketingishTasks = profileTasks.filter(t => /marketing|promoci|ads|anuncio|instagram|tráfico|trafico|contenido|comunidad/i.test(`${t.title || ""} ${t.description || ""} ${t.roleName || ""}`)).length;
+  const workload = cache.profiles?.find(p => p.id === profileId) ? weeklyWorkloadReport(cache.profiles.find(p => p.id === profileId), profileTasks) : null;
+  return {
+    decisionsPending,
+    hasSales: salesTotal > 0,
+    hasAds: adSpend > 0,
+    hasInvestment: investmentTotal > 0,
+    salesTotal,
+    adSpend,
+    investmentTotal,
+    designishTasks,
+    marketingishTasks,
+    marketingLow: designishTasks >= 2 && marketingishTasks === 0,
+    tasksPending: profileTasks.filter(t => t.status !== "completed").length,
+    existingStrategic: profileTasks.filter(t => t.roleId === STRATEGIC_ROLE_ID || t.roleName === STRATEGIC_ROLE_NAME),
+    saturatedDays: workload?.saturatedDays || 0,
+    protectedWithTasks: workload?.protectedWithTasks || 0
+  };
+}
+
+function scoreStrategicTask(task, signals) {
+  let score = task.priorityBase || 50;
+  if (task.activationTags?.includes("base")) score += 25;
+  if (signals.decisionsPending && task.activationTags?.includes("decisions_pending")) score += 35;
+  if ((signals.hasSales || signals.hasAds || signals.hasInvestment) && task.activationTags?.includes("has_data")) score += 20;
+  if (signals.hasSales && task.activationTags?.includes("has_sales")) score += 25;
+  if (signals.hasAds && task.activationTags?.includes("has_ads")) score += 25;
+  if (signals.hasInvestment && task.activationTags?.includes("has_investment")) score += 15;
+  if (signals.marketingLow && (task.activationTags?.includes("design_excess") || task.activationTags?.includes("marketing_low"))) score += 30;
+  if (signals.tasksPending >= 4 && (task.activationTags?.includes("many_tasks") || task.activationTags?.includes("too_many_tasks"))) score += 25;
+  if (signals.saturatedDays || signals.protectedWithTasks) {
+    if (task.activationTags?.includes("workload_high") || task.activationTags?.includes("saturation")) score += 30;
+  }
+  return score;
+}
+
+function selectStrategicTasksForProfile(profile) {
+  const signals = workspaceSignals(profile.id);
+  const existingIds = new Set(signals.existingStrategic.map(t => t.roleTaskId || t.strategicTaskId).filter(Boolean));
+  const candidates = STRATEGIC_ROLE_TASK_BANK
+    .filter(t => !existingIds.has(t.id))
+    .map(t => ({ ...t, score: scoreStrategicTask(t, signals) }))
+    .sort((a, b) => b.score - a.score);
+  const main = candidates.filter(t => t.frequency !== "as_needed" && t.taskType !== "check").slice(0, 3);
+  let selected = main.length ? main : candidates.slice(0, 3);
+  const shouldAddLight = selected.length < 4 && !selected.some(t => t.id === "quick_direction_check");
+  const light = candidates.find(t => t.id === "quick_direction_check") || candidates.find(t => t.canUseLightDay && !selected.some(s => s.id === t.id));
+  if (shouldAddLight && light) selected = [...selected, light];
+  return selected.slice(0, 4);
+}
+
+function weightedMinutesForBankTask(t) {
+  const w = INTENSITY_WEIGHT[t.intensity || "medium"] || INTENSITY_WEIGHT.medium;
+  return Math.round((Number(t.estimatedMinutes) || 30) * w);
+}
+
+function dayProjectedPercent(profile, dayKey, tasks, extraTasks = []) {
+  const dayTasks = [...tasks.filter(t => t.assignedDay === dayKey), ...extraTasks];
+  const capacity = dayCapacityMinutes(profile.availability, dayKey);
+  const weighted = dayTasks.reduce((sum, task) => sum + (task.roleTaskId ? weightedMinutesForBankTask(task) : weightedTaskMinutes(task)), 0);
+  if (capacity <= 0) return weighted > 0 ? 999 : 0;
+  return Math.round((weighted / capacity) * 100);
+}
+
+function findStrategicTaskDay(profile, task, currentTasks, alreadyPlanned = []) {
+  const availability = normalizeAvailability(profile.availability);
+  const preferredOrder = WEEK_DAYS.map(d => d.key);
+  const closeIdx = preferredOrder.indexOf(availability.weeklyCloseDay);
+  const startOrder = [...preferredOrder.slice(0, closeIdx >= 0 ? closeIdx : preferredOrder.length), ...preferredOrder.slice(closeIdx >= 0 ? closeIdx : preferredOrder.length)];
+  const precloseOrder = closeIdx > 0 ? [preferredOrder[closeIdx - 1], availability.weeklyCloseDay, ...preferredOrder.filter((_, i) => i !== closeIdx - 1 && i !== closeIdx)] : [availability.weeklyCloseDay, ...preferredOrder.filter(k => k !== availability.weeklyCloseDay)];
+  let order = task.suggestedDayMoment === "preclose" ? precloseOrder : task.suggestedDayMoment === "middle" ? ["wednesday", "thursday", "tuesday", "friday", "monday", "saturday", "sunday"] : startOrder;
+  const scored = order.map(key => {
+    const mode = availability.days[key]?.mode || "external_plus_business";
+    let score = 0;
+    if (mode === "business_available") score += 100;
+    if (mode === "external_plus_business") score += 70;
+    if (mode === "light" && task.canUseLightDay) score += 65;
+    if (mode === "light" && !task.canUseLightDay) score += 20;
+    if (mode === "external_only") score -= 40;
+    if (mode === "protected") score -= task.canUseProtectedDay ? 20 : 120;
+    if (alreadyPlanned.some(t => t.assignedDay === key && t.roleId === STRATEGIC_ROLE_ID)) score += 35;
+    const projected = dayProjectedPercent(profile, key, currentTasks, [...alreadyPlanned.filter(t => t.assignedDay === key), task]);
+    if (projected <= 45) score += 30;
+    else if (projected <= 70) score += 15;
+    else if (projected <= 90) score -= 15;
+    else score -= 55;
+    return { key, score, projected, mode };
+  }).sort((a,b) => b.score - a.score);
+  return scored[0] || { key: "monday", projected: 0, mode: "business_available" };
+}
+
+function buildStrategicWeeklyTask(profile, task, assignedDay) {
+  return {
+    profileId: profile.id,
+    title: task.title,
+    description: task.description,
+    assignedDay,
+    estimatedMinutes: task.estimatedMinutes,
+    intensity: task.intensity,
+    status: "pending",
+    notes: `Objetivo: ${task.objective}\nEvidencia requerida: ${task.evidenceRequired}`,
+    source: "role",
+    roleId: STRATEGIC_ROLE_ID,
+    roleName: STRATEGIC_ROLE_NAME,
+    roleTaskId: task.id,
+    strategicTaskId: task.id,
+    taskType: task.taskType,
+    businessImpact: task.businessImpact,
+    evidenceRequired: task.evidenceRequired,
+    taskEcosystemEnabled: true,
+    ecosystemTemplateId: task.ecosystemTemplateId,
+    createdBy: currentUser?.email || "system"
+  };
+}
+
+function strategicRoleSummary(profile) {
+  if (!profileHasStrategicRole(profile)) return `<div class="role-connection muted-box"><span class="eyebrow">Rol estratégico</span><p>Este perfil todavía no tiene Dirección estratégica del negocio activa.</p></div>`;
+  const roleTasks = getProfileWeeklyTasks(profile.id).filter(t => t.roleId === STRATEGIC_ROLE_ID || t.roleName === STRATEGIC_ROLE_NAME);
+  const pending = roleTasks.filter(t => t.status !== "completed").length;
+  const completed = roleTasks.filter(t => t.status === "completed").length;
+  return `<div class="role-connection active-role-connection">
+    <div><span class="eyebrow">Rol activo</span><h4>Dirección estratégica del negocio</h4><p>Este rol puede generar tareas estratégicas agrupadas por día, respetando disponibilidad, carga y descanso.</p></div>
+    <div class="role-connection-stats"><span>${roleTasks.length} tareas</span><span>${completed} hechas</span><span>${pending} pendientes</span></div>
+    <button class="primary-btn" data-generate-strategic-tasks="${profile.id}">Generar tareas estratégicas</button>
+  </div>`;
+}
+
+async function generateStrategicTasks(profileId) {
+  const profile = (cache.profiles || []).find(p => p.id === profileId);
+  if (!profile) return;
+  if (!profileHasStrategicRole(profile)) {
+    openInfoModal({ eyebrow: "Rol no asignado", title: "Dirección estratégica no está activa", html: `<p>Primero asigna este rol como rol principal o subrol en el perfil. Después el sistema podrá generar tareas estratégicas para la semana.</p>` });
+    return;
+  }
+  const currentTasks = getProfileWeeklyTasks(profile.id);
+  const selected = selectStrategicTasksForProfile(profile);
+  if (!selected.length) {
+    await logActivity("skip_role_tasks", "profileWeeklyTasks", `No generó tareas estratégicas para ${profile.name || "perfil"}: ya existen o no hay selección necesaria.`);
+    openInfoModal({ eyebrow: "Sin nuevas tareas", title: "No hay tareas estratégicas nuevas", html: `<p>Este perfil ya tiene las tareas estratégicas base o no hay suficiente señal para agregar más sin generar ruido.</p>` });
+    return;
+  }
+  const planned = [];
+  selected.forEach(task => {
+    const best = findStrategicTaskDay(profile, task, currentTasks, planned);
+    planned.push(buildStrategicWeeklyTask(profile, task, best.key));
+  });
+  const redDays = new Set();
+  planned.forEach(t => {
+    const projected = dayProjectedPercent(profile, t.assignedDay, currentTasks, planned.filter(x => x.assignedDay === t.assignedDay));
+    if (projected >= 91) redDays.add(t.assignedDay);
+  });
+  const root = ensureModalRoot();
+  root.innerHTML = `<div class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="record-modal wide-modal">
+      <div class="modal-header">
+        <div><span class="eyebrow">Generar tareas del rol</span><h2>Dirección estratégica para ${escapeHtml(profile.name || "perfil")}</h2></div>
+        <button class="icon-btn" data-modal-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="learning-box modal-learning"><span class="eyebrow">Regla de salud</span><p>El sistema intenta agrupar por rol/día, evitar días protegidos y mantener la carga fuera de rojo. Si hay pocos días disponibles, puede juntar tareas, pero prioriza lo esencial.</p></div>
+      ${redDays.size ? `<div class="calendar-suggestion warning-suggestion">Advertencia: la asignación podría dejar en rojo ${[...redDays].map(dayLabel).join(", ")}. Puedes guardar y luego mover tareas manualmente, o cancelar y ajustar disponibilidad.</div>` : `<div class="calendar-suggestion">La asignación queda dentro de una carga aceptable según la información disponible.</div>`}
+      <div class="role-task-table"><div class="role-task-row head"><span>Tarea</span><span>Día</span><span>Tiempo</span><span>Intensidad</span></div>
+        ${planned.map(t => `<div class="role-task-row"><div><strong>${escapeHtml(t.title)}</strong><p>${escapeHtml(t.businessImpact || "")}</p></div><span>${dayLabel(t.assignedDay)}</span><span>${t.estimatedMinutes} min</span><span>${intensityLabel(t.intensity)}</span></div>`).join("")}
+      </div>
+      <div class="modal-actions"><button type="button" class="soft-btn" data-modal-close>Cancelar</button><button type="button" class="primary-btn" id="confirmStrategicTasks">Guardar tareas</button></div>
+    </div>
+  </div>`;
+  root.querySelectorAll("[data-modal-close]").forEach(btn => btn.addEventListener("click", closeModal));
+  root.querySelector("#confirmStrategicTasks").addEventListener("click", async () => {
+    for (const task of planned) {
+      await addDoc(workspaceCol("profileWeeklyTasks"), { ...task, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    }
+    await logActivity("generate_role_tasks", "profileWeeklyTasks", `Generó ${planned.length} tareas de Dirección estratégica para ${profile.name || "perfil"}`);
+    closeModal();
+  });
+}
 
 const FIELD_SCHEMAS = {
   profiles: [
@@ -1315,7 +1809,7 @@ function renderAll() {
   renderDashboard();
   renderStages();
   renderProfiles();
-  renderGeneric("roles", "Rol", ["title", "owner", "status", "notes"]);
+  renderRoles();
   renderGeneric("products", "Producto", ["name", "collection", "heroStatus", "status", "notes"]);
   renderGeneric("audit", "Auditoría", ["section", "score", "status", "notes"]);
   renderGeneric("competitors", "Competidor", ["brand", "url", "score", "notes"]);
@@ -1716,6 +2210,7 @@ function renderProfiles() {
           <div><span>Rol principal</span><strong>${p.primaryRole || "Pendiente"}</strong></div>
           <div><span>Subroles</span><strong>${p.subRoles || "Pendientes"}</strong></div>
         </div>
+        ${strategicRoleSummary(p)}
         <div class="availability-summary">
           <div class="availability-head">
             <div><span class="eyebrow">Disponibilidad semanal</span><strong>Cierre: ${dayLabel(avStats.closeDay)}</strong></div>
@@ -1752,6 +2247,7 @@ function renderProfiles() {
   $$(`[data-edit-profile]`).forEach(btn => btn.addEventListener("click", () => editProfile(btn.dataset.editProfile)));
   $$(`[data-edit-availability]`).forEach(btn => btn.addEventListener("click", () => editAvailability(btn.dataset.editAvailability)));
   $$(`[data-profile-info]`).forEach(btn => btn.addEventListener("click", () => openProfileImportance(btn.dataset.profileInfo)));
+  $$(`[data-generate-strategic-tasks]`).forEach(btn => btn.addEventListener("click", () => generateStrategicTasks(btn.dataset.generateStrategicTasks)));
   $$(`[data-calendar-help]`).forEach(btn => btn.addEventListener("click", () => openCalendarHelp(btn.dataset.calendarHelp)));
   $$(`[data-workload-help]`).forEach(btn => btn.addEventListener("click", () => openWorkloadHelp(btn.dataset.workloadHelp)));
   $$(`[data-availability-graph]`).forEach(btn => btn.addEventListener("click", () => openAvailabilityGraph(btn.dataset.availabilityGraph)));
@@ -2081,6 +2577,126 @@ function openProfileImportance(id) {
       <div class="learning-box"><span class="eyebrow">Cómo ayuda a vender</span><p>Cuando el equipo sabe quién cuida marca, producto, tienda, promoción y números, el negocio deja de depender de impulsos. El sistema podrá conectar tareas, actividad y resultados con cada persona.</p></div>
       <div class="learning-box"><span class="eyebrow">Disponibilidad semanal</span><p>Antes de asignar tareas por rol, el perfil debe declarar cuándo puede trabajar, qué días protege para descansar y cuál es su máximo sano de horas. Así el sistema planifica con vida real, no con fantasía de productividad.</p></div><div class="learning-box"><span class="eyebrow">Siguiente paso</span><p>Después conectaremos estos perfiles con roles predefinidos, tareas por día, riesgo de saturación y cierre semanal.</p></div>
     </div>`
+  });
+}
+
+
+function arrHtml(list, cls = "role-pill") {
+  return (list || []).map(x => `<span class="${cls}">${escapeHtml(typeof x === "string" ? x : x.title || x.moment || "")}</span>`).join("");
+}
+
+function roleTaskRows(tasks = []) {
+  return tasks.map(t => `
+    <div class="role-task-row">
+      <div><strong>${escapeHtml(t.title)}</strong><p>${escapeHtml(t.businessImpact || "")}</p></div>
+      <span>${escapeHtml(t.duration || 0)} min</span>
+      <span>${escapeHtml(t.intensity || "media")}</span>
+      <span>${escapeHtml(t.priority || "media")}</span>
+    </div>`).join("");
+}
+
+function renderRoles() {
+  const container = $("#roles"); if (!container) return;
+  const roles = (cache.roles || []).filter(r => r.id === STRATEGIC_DIRECTION_ROLE.id || r.locked || r.status === "catalog");
+  const role = roles.find(r => r.id === STRATEGIC_DIRECTION_ROLE.id) || STRATEGIC_DIRECTION_ROLE;
+  const legacy = (cache.roles || []).filter(r => !(r.id === STRATEGIC_DIRECTION_ROLE.id || r.locked || r.status === "catalog"));
+  container.innerHTML = `
+    <div class="role-library-hero">
+      <span class="eyebrow">1.5 — Catálogo estratégico de roles</span>
+      <h3>Roles como sistema de trabajo, no como títulos bonitos</h3>
+      <p>Los roles de The 86 Club deben generar dirección, tareas, límites y aprendizaje. Primero estamos creando la ficha completa. Después conectaremos cada rol con perfiles, calendario, saturación, cierre semanal y datos reales del workspace.</p>
+      <div class="role-hero-rules">
+        <span>Salud primero</span><span>1 rol por día si se puede</span><span>Tareas según datos</span><span>Modal grande por tarea en fase futura</span>
+      </div>
+    </div>
+    <div class="role-card strategic-role-card">
+      <div class="role-card-head">
+        <div>
+          <span class="eyebrow">${escapeHtml(role.maturity || "1.5.1")}</span>
+          <h3>${escapeHtml(role.title || role.name)}</h3>
+          <p>${escapeHtml(role.shortDescription || role.purpose)}</p>
+        </div>
+        <span class="badge">Catálogo base</span>
+      </div>
+      <div class="role-metric-grid">
+        <div><span>Área</span><strong>${escapeHtml(role.area || "Dirección")}</strong></div>
+        <div><span>Responsabilidad central</span><strong>${escapeHtml(role.coreResponsibility || "Definir foco semanal")}</strong></div>
+        <div><span>Límite inicial</span><strong>2–4 h/semana</strong></div>
+        <div><span>Estado</span><strong>Listo para conectar</strong></div>
+      </div>
+      <div class="role-focus-box">
+        <div><span class="eyebrow">Propósito</span><p>${escapeHtml(role.purpose)}</p></div>
+        <div><span class="eyebrow">Por qué existe</span><p>${escapeHtml(role.whyItMatters)}</p></div>
+      </div>
+      <div class="role-actions-row">
+        <button class="primary-btn" data-role-detail="${role.id}">Abrir ficha completa</button>
+        <button class="soft-btn" data-role-tasks="${role.id}">Ver banco de tareas</button>
+        <button class="soft-btn" data-role-system="${role.id}">Ver lógica futura</button>
+      </div>
+      <div class="role-signal-preview">
+        <div><b>Verde</b>${arrHtml((role.greenSignals || []).slice(0,3), "role-pill green")}</div>
+        <div><b>Amarillo</b>${arrHtml((role.yellowSignals || []).slice(0,3), "role-pill yellow")}</div>
+        <div><b>Rojo</b>${arrHtml((role.redSignals || []).slice(0,3), "role-pill red")}</div>
+      </div>
+    </div>
+    ${legacy.length ? `<div class="card"><span class="eyebrow">Roles antiguos / manuales</span><p class="muted">Estos registros existen en Firestore, pero el sistema nuevo usará catálogo estratégico.</p><div class="item-list">${legacy.map(item => `<div class="item"><div class="item-head"><strong>${escapeHtml(item.title || item.name || "Rol")}</strong><span class="badge">manual</span></div><p>${escapeHtml(item.notes || "")}</p></div>`).join("")}</div></div>` : ""}
+  `;
+  container.querySelectorAll("[data-role-detail]").forEach(btn => btn.addEventListener("click", () => openRoleDetailModal(role)));
+  container.querySelectorAll("[data-role-tasks]").forEach(btn => btn.addEventListener("click", () => openRoleTasksModal(role)));
+  container.querySelectorAll("[data-role-system]").forEach(btn => btn.addEventListener("click", () => openRoleSystemModal(role)));
+}
+
+function openRoleDetailModal(role) {
+  openInfoModal({
+    eyebrow: role.maturity || "Rol estratégico",
+    title: role.title || role.name,
+    html: `
+      <div class="role-modal-grid">
+        <div class="learning-box"><span class="eyebrow">Propósito</span><p>${escapeHtml(role.purpose)}</p></div>
+        <div class="learning-box"><span class="eyebrow">Responsabilidad central</span><p>${escapeHtml(role.coreResponsibility)}</p></div>
+        <div class="learning-box"><span class="eyebrow">Salud física y mental</span><p>${escapeHtml(role.healthRule)}</p></div>
+        <div class="learning-box"><span class="eyebrow">Agrupación por rol/día</span><p>${escapeHtml(role.focusRule)}</p></div>
+      </div>
+      <h3>Responsabilidades</h3><div class="pill-cloud">${arrHtml(role.responsibilities)}</div>
+      <h3>Qué debe evitar</h3><div class="pill-cloud">${arrHtml(role.avoid, "role-pill red")}</div>
+      <h3>Métricas que debe revisar</h3><div class="pill-cloud">${arrHtml(role.metrics, "role-pill")}</div>
+      <h3>Límites recomendados</h3><div class="pill-cloud">${arrHtml(role.recommendedLimits, "role-pill yellow")}</div>
+      <h3>Distribución semanal sugerida</h3>
+      <div class="role-distribution-list">${(role.suggestedWeeklyDistribution || []).map(x => `<div><strong>${escapeHtml(x.moment)}</strong><p>${escapeHtml(x.work)}</p></div>`).join("")}</div>
+    `
+  });
+}
+
+function openRoleTasksModal(role) {
+  openInfoModal({
+    eyebrow: "Banco de tareas del rol",
+    title: `Tareas posibles — ${role.title || role.name}`,
+    html: `
+      <div class="learning-box"><span class="eyebrow">Importante</span><p>Este banco no significa que todas las tareas se asignen el mismo día. El sistema escogerá tareas según prioridad, datos del workspace, disponibilidad, carga, roles activos y salud del usuario.</p></div>
+      <h3>Tareas semanales esenciales</h3>
+      <div class="role-task-table"><div class="role-task-row head"><span>Tarea</span><span>Tiempo</span><span>Intensidad</span><span>Prioridad</span></div>${roleTaskRows(role.weeklyTasks)}</div>
+      <h3>Tareas ligeras</h3>
+      <div class="role-task-table"><div class="role-task-row head"><span>Tarea</span><span>Tiempo</span><span>Intensidad</span><span>Prioridad</span></div>${roleTaskRows(role.lightTasks)}</div>
+    `
+  });
+}
+
+function openRoleSystemModal(role) {
+  openInfoModal({
+    eyebrow: "Conexiones futuras",
+    title: `Cómo se conectará ${role.title || role.name}`,
+    html: `
+      <div class="role-modal-grid">
+        <div class="learning-box"><span class="eyebrow">Perfil</span><p>${escapeHtml(role.profileConnection)}</p></div>
+        <div class="learning-box"><span class="eyebrow">Calendario</span><p>${escapeHtml(role.calendarConnection)}</p></div>
+        <div class="learning-box"><span class="eyebrow">Cierre semanal</span><p>${escapeHtml(role.weeklyCloseConnection)}</p></div>
+        <div class="learning-box"><span class="eyebrow">Dashboard</span><p>${escapeHtml(role.dashboardConnection)}</p></div>
+      </div>
+      <h3>Activación según datos del workspace</h3>
+      <div class="pill-cloud">${arrHtml(role.taskActivationLogic, "role-pill")}</div>
+      <h3>Ecosistema futuro de tarea</h3>
+      <div class="learning-box"><p>${escapeHtml(role.taskEcosystemNote)}</p></div>
+    `
   });
 }
 
