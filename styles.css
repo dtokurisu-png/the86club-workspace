@@ -1712,3 +1712,83 @@ html:not([data-theme="dark"]) .field select{background:#ffffff;border-color:#c8c
   .nav-categorized { max-height: none; overflow: visible; }
   .nav-group:not([data-collapsed="true"]) .nav-group-items { max-height: none; overflow: visible; }
 }
+
+/* V4.9.2 sidebar open groups real expansion + hidden wheel scroll */
+.sidebar{
+  height:100dvh;
+  max-height:100dvh;
+  overflow:hidden !important;
+  display:flex;
+  flex-direction:column;
+}
+.nav-categorized{
+  display:flex !important;
+  flex-direction:column;
+  gap:14px;
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  padding-right:0;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+}
+.nav-categorized::-webkit-scrollbar{display:none;width:0;height:0;}
+.nav-group{
+  flex:0 0 auto;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden !important;
+  transition:max-height .18s ease, min-height .18s ease, border-color .18s ease;
+}
+.nav-group[data-collapsed="true"]{
+  min-height:auto;
+  max-height:150px;
+}
+.nav-group:not([data-collapsed="true"]){
+  min-height:190px;
+  max-height:min(318px, 42vh);
+}
+.nav-group-toggle{
+  flex:0 0 auto;
+}
+.nav-group-items{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  padding:0 12px 14px 39px !important;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+}
+.nav-group-items::-webkit-scrollbar{display:none;width:0;height:0;}
+.nav-group[data-collapsed="true"] .nav-group-items{
+  display:none !important;
+}
+.nav-group:not([data-collapsed="true"]) .nav-group-items{
+  max-height:none !important;
+}
+.nav-group .nav-btn{
+  flex:0 0 auto;
+  width:100%;
+  min-height:42px;
+}
+.sidebar-footer{
+  flex:0 0 auto;
+  margin-top:10px !important;
+}
+@media (max-width:960px){
+  .shell{grid-template-columns:1fr;}
+  .sidebar{
+    position:relative;
+    height:100dvh !important;
+    max-height:100dvh !important;
+    overflow:hidden !important;
+  }
+  .nav-categorized{overflow-y:auto !important; max-height:none !important;}
+  .nav-group:not([data-collapsed="true"]){min-height:190px; max-height:min(318px, 42vh);}
+  .nav-group:not([data-collapsed="true"]) .nav-group-items{overflow-y:auto !important; max-height:none !important;}
+}

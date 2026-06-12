@@ -1031,7 +1031,25 @@ function subscribeAll() {
   unsubscribers.push(activityUnsub);
 }
 
+
+function initSidebarWheelScroll() {
+  const nav = document.querySelector('.nav-categorized');
+  if (!nav || nav.dataset.wheelScrollReady === 'true') return;
+  nav.dataset.wheelScrollReady = 'true';
+  nav.addEventListener('wheel', (event) => {
+    const inner = event.target.closest('.nav-group-items');
+    const target = inner || nav;
+    if (!target) return;
+    const canScroll = target.scrollHeight > target.clientHeight + 2;
+    if (!canScroll && target !== nav) return;
+    const before = target.scrollTop;
+    target.scrollTop += event.deltaY;
+    if (target.scrollTop !== before) event.preventDefault();
+  }, { passive: false });
+}
+
 function initNavigation() {
+  initSidebarWheelScroll();
   $$(".nav-btn").forEach(btn => btn.addEventListener("click", () => switchView(btn.dataset.view)));
   $$("[data-nav-group-toggle]").forEach(toggle => {
     const groupId = toggle.dataset.navGroupToggle;
