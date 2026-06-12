@@ -1065,6 +1065,9 @@ function switchView(view) {
   $("#currentViewEyebrow").textContent = viewTitles[view] || view;
   localStorage.setItem("the86_view", view);
   openGroupForView(view);
+  if (view === "roles") {
+    renderRoles();
+  }
 }
 
 initNavigation();
@@ -2595,55 +2598,81 @@ function roleTaskRows(tasks = []) {
     </div>`).join("");
 }
 
+function getCatalogRoles() {
+  const existing = (cache.roles || []).filter(r => r.locked || r.status === "catalog" || r.id === STRATEGIC_DIRECTION_ROLE.id);
+  const hasStrategic = existing.some(r => r.id === STRATEGIC_DIRECTION_ROLE.id);
+  return (hasStrategic ? existing : [STRATEGIC_DIRECTION_ROLE, ...existing])
+    .filter((role, index, arr) => arr.findIndex(r => r.id === role.id) === index);
+}
+
 function renderRoles() {
   const container = $("#roles"); if (!container) return;
-  const roles = (cache.roles || []).filter(r => r.id === STRATEGIC_DIRECTION_ROLE.id || r.locked || r.status === "catalog");
-  const role = roles.find(r => r.id === STRATEGIC_DIRECTION_ROLE.id) || STRATEGIC_DIRECTION_ROLE;
-  const legacy = (cache.roles || []).filter(r => !(r.id === STRATEGIC_DIRECTION_ROLE.id || r.locked || r.status === "catalog"));
+  const roles = getCatalogRoles();
+  const strategic = roles.find(r => r.id === STRATEGIC_DIRECTION_ROLE.id) || STRATEGIC_DIRECTION_ROLE;
+  const manualCount = (cache.roles || []).filter(r => !(r.locked || r.status === "catalog" || r.id === STRATEGIC_DIRECTION_ROLE.id)).length;
   container.innerHTML = `
-    <div class="role-library-hero">
+    <div class="role-library-hero role-library-reset">
       <span class="eyebrow">1.5 — Catálogo estratégico de roles</span>
-      <h3>Roles como sistema de trabajo, no como títulos bonitos</h3>
-      <p>Los roles de The 86 Club deben generar dirección, tareas, límites y aprendizaje. Primero estamos creando la ficha completa. Después conectaremos cada rol con perfiles, calendario, saturación, cierre semanal y datos reales del workspace.</p>
+      <h3>Biblioteca estratégica de responsabilidades</h3>
+      <p>Esta página ya no sirve para crear roles sueltos. Los roles deben existir como guías de trabajo: explican qué cuida cada persona, qué tareas puede generar, qué límites protege y cómo ayuda a The 86 Club a vender sin saturar al equipo.</p>
       <div class="role-hero-rules">
-        <span>Salud primero</span><span>1 rol por día si se puede</span><span>Tareas según datos</span><span>Modal grande por tarea en fase futura</span>
+        <span>Catálogo base</span><span>Sin roles improvisados</span><span>Salud primero</span><span>Tareas por rol/día</span><span>Ecosistema futuro por tarea</span>
       </div>
+      ${manualCount ? `<p class="muted role-legacy-note">Hay ${manualCount} rol(es) manuales antiguos guardados en Firestore. No se muestran aquí porque pertenecen a la versión obsoleta de “Agregar rol”. El sistema nuevo usará solo roles estratégicos definidos.</p>` : ""}
     </div>
-    <div class="role-card strategic-role-card">
+
+    <div class="role-library-grid">
+      ${roles.map(role => renderRoleLibraryCard(role)).join("")}
+    </div>
+  `;
+  container.querySelectorAll("[data-role-detail]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const role = roles.find(r => r.id === btn.dataset.roleDetail) || strategic;
+      openRoleDetailModal(role);
+    });
+  });
+  container.querySelectorAll("[data-role-tasks]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const role = roles.find(r => r.id === btn.dataset.roleTasks) || strategic;
+      openRoleTasksModal(role);
+    });
+  });
+  container.querySelectorAll("[data-role-system]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const role = roles.find(r => r.id === btn.dataset.roleSystem) || strategic;
+      openRoleSystemModal(role);
+    });
+  });
+}
+
+function renderRoleLibraryCard(role) {
+  const taskCount = (role.weeklyTasks || []).length + (role.lightTasks || []).length;
+  return `
+    <article class="role-card strategic-role-card role-library-card">
       <div class="role-card-head">
         <div>
-          <span class="eyebrow">${escapeHtml(role.maturity || "1.5.1")}</span>
+          <span class="eyebrow">${escapeHtml(role.maturity || "Catálogo")}</span>
           <h3>${escapeHtml(role.title || role.name)}</h3>
-          <p>${escapeHtml(role.shortDescription || role.purpose)}</p>
+          <p>${escapeHtml(role.shortDescription || role.purpose || "Rol estratégico de The 86 Club.")}</p>
         </div>
-        <span class="badge">Catálogo base</span>
+        <span class="badge">${escapeHtml(role.area || "Rol base")}</span>
       </div>
-      <div class="role-metric-grid">
-        <div><span>Área</span><strong>${escapeHtml(role.area || "Dirección")}</strong></div>
-        <div><span>Responsabilidad central</span><strong>${escapeHtml(role.coreResponsibility || "Definir foco semanal")}</strong></div>
-        <div><span>Límite inicial</span><strong>2–4 h/semana</strong></div>
-        <div><span>Estado</span><strong>Listo para conectar</strong></div>
+      <div class="role-metric-grid role-metric-grid-compact">
+        <div><span>Responsabilidad</span><strong>${escapeHtml(role.coreResponsibility || "Pendiente de definir")}</strong></div>
+        <div><span>Tareas</span><strong>${taskCount || "Banco pendiente"}</strong></div>
+        <div><span>Límite</span><strong>${escapeHtml((role.recommendedLimits || ["Por definir"])[0])}</strong></div>
+        <div><span>Estado</span><strong>${role.id === STRATEGIC_DIRECTION_ROLE.id ? "Conectado" : "Pendiente"}</strong></div>
       </div>
       <div class="role-focus-box">
-        <div><span class="eyebrow">Propósito</span><p>${escapeHtml(role.purpose)}</p></div>
-        <div><span class="eyebrow">Por qué existe</span><p>${escapeHtml(role.whyItMatters)}</p></div>
+        <div><span class="eyebrow">Propósito</span><p>${escapeHtml(role.purpose || "Pendiente de definición estratégica.")}</p></div>
+        <div><span class="eyebrow">Por qué importa</span><p>${escapeHtml(role.whyItMatters || "Este rol se definirá antes de conectarlo con perfiles y tareas.")}</p></div>
       </div>
       <div class="role-actions-row">
-        <button class="primary-btn" data-role-detail="${role.id}">Abrir ficha completa</button>
-        <button class="soft-btn" data-role-tasks="${role.id}">Ver banco de tareas</button>
-        <button class="soft-btn" data-role-system="${role.id}">Ver lógica futura</button>
+        <button class="primary-btn" data-role-detail="${escapeAttr(role.id)}">Abrir ficha completa</button>
+        <button class="soft-btn" data-role-tasks="${escapeAttr(role.id)}">Ver tareas</button>
+        <button class="soft-btn" data-role-system="${escapeAttr(role.id)}">Ver lógica</button>
       </div>
-      <div class="role-signal-preview">
-        <div><b>Verde</b>${arrHtml((role.greenSignals || []).slice(0,3), "role-pill green")}</div>
-        <div><b>Amarillo</b>${arrHtml((role.yellowSignals || []).slice(0,3), "role-pill yellow")}</div>
-        <div><b>Rojo</b>${arrHtml((role.redSignals || []).slice(0,3), "role-pill red")}</div>
-      </div>
-    </div>
-    ${legacy.length ? `<div class="card"><span class="eyebrow">Roles antiguos / manuales</span><p class="muted">Estos registros existen en Firestore, pero el sistema nuevo usará catálogo estratégico.</p><div class="item-list">${legacy.map(item => `<div class="item"><div class="item-head"><strong>${escapeHtml(item.title || item.name || "Rol")}</strong><span class="badge">manual</span></div><p>${escapeHtml(item.notes || "")}</p></div>`).join("")}</div></div>` : ""}
-  `;
-  container.querySelectorAll("[data-role-detail]").forEach(btn => btn.addEventListener("click", () => openRoleDetailModal(role)));
-  container.querySelectorAll("[data-role-tasks]").forEach(btn => btn.addEventListener("click", () => openRoleTasksModal(role)));
-  container.querySelectorAll("[data-role-system]").forEach(btn => btn.addEventListener("click", () => openRoleSystemModal(role)));
+    </article>`;
 }
 
 function openRoleDetailModal(role) {
