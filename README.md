@@ -1,11 +1,16 @@
-# The 86 Club Workspace
+# The 86 Club Workspace V3
 
 Private operating workspace for The 86 Club.
 
-Stack:
-- GitHub Pages for hosting
-- Firebase Authentication for login
-- Cloud Firestore for workspace data
-- Google Drive links for files and assets
+V3 agrega:
+- Inversiones
+- Abonos entre socios / simulación de participación
+- Ventas y datos comerciales
+- Estadísticas simples
+- Diagnóstico estratégico
 
-Do not commit private passwords or tokens.
+Stack:
+- Netlify: publicación
+- Firebase Auth: login
+- Firestore: datos
+- Google Drive: archivos por enlaces
