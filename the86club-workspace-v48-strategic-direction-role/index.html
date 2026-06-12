@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The 86 Club Workspace</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="appShell" class="shell">
+    <aside class="sidebar">
+      <div class="brand-block">
+        <div class="brand-mark">86</div>
+        <div>
+          <h1>The 86 Club</h1>
+          <p>Workspace</p>
+        </div>
+      </div>
+      <nav class="nav nav-categorized" aria-label="Workspace sections">
+        <section class="nav-group" data-nav-group="direction">
+          <button class="nav-group-toggle" type="button" aria-expanded="true" data-nav-group-toggle="direction">
+            <span class="nav-chevron">▾</span>
+            <span>
+              <strong>Dirección general</strong>
+              <small>Estado global, equilibrio y diagnóstico.</small>
+            </span>
+          </button>
+          <div class="nav-group-items">
+            <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+            <button class="nav-btn" data-view="diagnosis">Diagnóstico</button>
+            <button class="nav-btn" data-view="stats">Equilibrio / estadísticas</button>
+          </div>
+        </section>
+
+        <section class="nav-group" data-nav-group="execution">
+          <button class="nav-group-toggle" type="button" aria-expanded="false" data-nav-group-toggle="execution">
+            <span class="nav-chevron">▸</span>
+            <span>
+              <strong>Ejecución semanal</strong>
+              <small>Etapas, tareas y actividad del equipo.</small>
+            </span>
+          </button>
+          <div class="nav-group-items">
+            <button class="nav-btn" data-view="stages">Etapas</button>
+            <button class="nav-btn" data-view="activity">Actividad</button>
+          </div>
+        </section>
+
+        <section class="nav-group" data-nav-group="team">
+          <button class="nav-group-toggle" type="button" aria-expanded="false" data-nav-group-toggle="team">
+            <span class="nav-chevron">▸</span>
+            <span>
+              <strong>Equipo</strong>
+              <small>Roles, perfiles y carga de trabajo.</small>
+            </span>
+          </button>
+          <div class="nav-group-items">
+            <button class="nav-btn" data-view="profiles">Perfiles</button>
+            <button class="nav-btn" data-view="roles">Roles</button>
+          </div>
+        </section>
+
+        <section class="nav-group" data-nav-group="business">
+          <button class="nav-group-toggle" type="button" aria-expanded="false" data-nav-group-toggle="business">
+            <span class="nav-chevron">▸</span>
+            <span>
+              <strong>Negocio</strong>
+              <small>Producto, tienda, mercado y promoción.</small>
+            </span>
+          </button>
+          <div class="nav-group-items">
+            <button class="nav-btn" data-view="products">Productos</button>
+            <button class="nav-btn" data-view="audit">Shopify / auditoría</button>
+            <button class="nav-btn" data-view="competitors">Competidores</button>
+            <button class="nav-btn" data-view="promotion">Plan promoción</button>
+          </div>
+        </section>
+
+        <section class="nav-group" data-nav-group="finance">
+          <button class="nav-group-toggle" type="button" aria-expanded="false" data-nav-group-toggle="finance">
+            <span class="nav-chevron">▸</span>
+            <span>
+              <strong>Finanzas</strong>
+              <small>Inversión, ventas y participación.</small>
+            </span>
+          </button>
+          <div class="nav-group-items">
+            <button class="nav-btn" data-view="investments">Inversiones</button>
+            <button class="nav-btn" data-view="commercial">Ventas y datos</button>
+          </div>
+        </section>
+
+        <section class="nav-group" data-nav-group="archive">
+          <button class="nav-group-toggle" type="button" aria-expanded="false" data-nav-group-toggle="archive">
+            <span class="nav-chevron">▸</span>
+            <span>
+              <strong>Archivos y decisiones</strong>
+              <small>Recursos, enlaces y acuerdos registrados.</small>
+            </span>
+          </button>
+          <div class="nav-group-items">
+            <button class="nav-btn" data-view="files">Archivos Drive</button>
+            <button class="nav-btn" data-view="decisions">Decisiones</button>
+          </div>
+        </section>
+      </nav>
+      <div class="sidebar-footer">
+        <button id="themeToggle" class="ghost-btn" type="button">Modo día</button>
+        <button id="signOutBtn" class="ghost-btn danger hidden" type="button">Salir</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section id="loginView" class="login-card">
+        <div class="login-copy">
+          <span class="eyebrow">Private workspace</span>
+          <h2>Entrar al centro operativo</h2>
+          <p>Usa el correo autorizado de The 86 Club. Los datos se guardan en Firestore y los archivos viven como enlaces de Google Drive.</p>
+        </div>
+        <form id="loginForm" class="login-form">
+          <label>Email<input id="loginEmail" type="email" autocomplete="email" required /></label>
+          <label>Contraseña<input id="loginPassword" type="password" autocomplete="current-password" required /></label>
+          <button class="primary-btn" type="submit">Iniciar sesión</button>
+          <p id="loginError" class="error-text"></p>
+        </form>
+      </section>
+
+      <section id="workspaceView" class="workspace hidden">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow" id="currentViewEyebrow">Dashboard</span>
+            <h2 id="viewTitle">The 86 Club Workspace</h2>
+          </div>
+          <div class="user-chip" id="userChip">Sin sesión</div>
+        </header>
+
+        <section id="dashboard" class="view active-view"></section>
+        <section id="stages" class="view"></section>
+        <section id="profiles" class="view"></section>
+        <section id="roles" class="view"></section>
+        <section id="products" class="view"></section>
+        <section id="audit" class="view"></section>
+        <section id="competitors" class="view"></section>
+        <section id="promotion" class="view"></section>
+        <section id="investments" class="view"></section>
+        <section id="commercial" class="view"></section>
+        <section id="stats" class="view"></section>
+        <section id="diagnosis" class="view"></section>
+        <section id="files" class="view"></section>
+        <section id="decisions" class="view"></section>
+        <section id="activity" class="view"></section>
+      </section>
+    </main>
+  </div>
+
+  <template id="emptyStateTemplate">
+    <div class="empty-state">
+      <h3>Sin registros todavía</h3>
+      <p>Agrega el primer registro para que el workspace empiece a respirar.</p>
+    </div>
+  </template>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
