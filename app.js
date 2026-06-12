@@ -2,6 +2,128 @@ import { auth, db, WORKSPACE_ID } from "./firebase.js";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { collection, doc, getDoc, setDoc, addDoc, updateDoc, onSnapshot, serverTimestamp, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+
+// --- THE86 DEBUG PANEL: v4.9.8 real debug bootstrap ---
+(function initThe86DebugPanel(){
+  if (window.T86Debug && window.T86Debug.__installed) return;
+  const entries = [];
+  const safeStringify = (value) => {
+    try { return JSON.stringify(value, null, 2); } catch (err) { return String(value); }
+  };
+  const push = (level, message, data) => {
+    const item = { time: new Date().toISOString(), level, message, data: data ?? null };
+    entries.push(item);
+    if (entries.length > 300) entries.shift();
+    if (window.T86Debug?.render) window.T86Debug.render();
+    try { console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log']('[T86]', message, data || ''); } catch (_) {}
+  };
+  const collectSidebar = () => {
+    const sidebar = document.querySelector('.sidebar');
+    const rail = document.querySelector('.sidebar-nav-scroll') || document.querySelector('.nav-groups') || document.querySelector('.nav');
+    const groups = Array.from(document.querySelectorAll('[data-nav-group], .nav-group')).map((el) => ({
+      id: el.dataset?.navGroup || el.getAttribute('data-nav-group') || el.className,
+      className: el.className,
+      clientHeight: el.clientHeight,
+      scrollHeight: el.scrollHeight,
+      offsetHeight: el.offsetHeight,
+      overflowY: getComputedStyle(el).overflowY,
+      maxHeight: getComputedStyle(el).maxHeight,
+      collapsed: el.classList.contains('collapsed') || el.dataset?.collapsed === 'true'
+    }));
+    return {
+      version: '4.9.8-real-debug',
+      url: location.href,
+      viewport: { width: innerWidth, height: innerHeight },
+      sidebar: sidebar ? {
+        clientHeight: sidebar.clientHeight,
+        scrollHeight: sidebar.scrollHeight,
+        offsetHeight: sidebar.offsetHeight,
+        overflowY: getComputedStyle(sidebar).overflowY,
+        display: getComputedStyle(sidebar).display,
+        maxHeight: getComputedStyle(sidebar).maxHeight
+      } : null,
+      rail: rail ? {
+        selector: rail.className || rail.id || rail.tagName,
+        clientHeight: rail.clientHeight,
+        scrollHeight: rail.scrollHeight,
+        offsetHeight: rail.offsetHeight,
+        scrollTop: rail.scrollTop,
+        overflowY: getComputedStyle(rail).overflowY,
+        maxHeight: getComputedStyle(rail).maxHeight,
+        canScroll: rail.scrollHeight > rail.clientHeight
+      } : null,
+      groups
+    };
+  };
+  const download = () => {
+    const payload = { generatedAt: new Date().toISOString(), sidebar: collectSidebar(), entries };
+    const blob = new Blob([safeStringify(payload)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'the86club-debug-log.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const copy = async () => {
+    const payload = safeStringify({ generatedAt: new Date().toISOString(), sidebar: collectSidebar(), entries });
+    try { await navigator.clipboard.writeText(payload); push('log', 'Log copiado al portapapeles'); }
+    catch (err) { push('error', 'No se pudo copiar el log', { message: err.message }); }
+  };
+  const render = () => {
+    const box = document.getElementById('t86DebugEntries');
+    if (!box) return;
+    box.innerHTML = entries.slice(-80).reverse().map(e => `<div class="t86-debug-line ${e.level}"><b>${e.level.toUpperCase()}</b> ${e.time}<br>${e.message}${e.data ? `<pre>${safeStringify(e.data).replace(/[<>&]/g, ch => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]))}</pre>` : ''}</div>`).join('') || '<p>No hay entradas todavía.</p>';
+  };
+  const mount = () => {
+    if (document.getElementById('t86DebugFab')) return;
+    const style = document.createElement('style');
+    style.id = 't86DebugStyle';
+    style.textContent = `
+      #t86DebugFab{position:fixed;right:16px;bottom:16px;z-index:999999;border:1px solid rgba(212,175,55,.6);background:#111;color:#f6e7bc;border-radius:999px;padding:10px 14px;font-weight:800;box-shadow:0 10px 28px rgba(0,0,0,.35);cursor:pointer}
+      #t86DebugPanel{position:fixed;right:16px;bottom:64px;width:min(560px,calc(100vw - 32px));height:min(620px,calc(100vh - 96px));z-index:999998;background:#101010;color:#f7f0df;border:1px solid rgba(212,175,55,.45);border-radius:18px;box-shadow:0 22px 70px rgba(0,0,0,.5);display:none;overflow:hidden}
+      #t86DebugPanel.open{display:flex;flex-direction:column}
+      .t86-debug-head{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:space-between;gap:10px}
+      .t86-debug-title{font-weight:900;letter-spacing:.06em;color:#d4af37}.t86-debug-actions{display:flex;flex-wrap:wrap;gap:8px;padding:12px;border-bottom:1px solid rgba(255,255,255,.1)}
+      .t86-debug-actions button{border:1px solid rgba(212,175,55,.38);background:#1b1b1b;color:#f7f0df;border-radius:10px;padding:8px 10px;cursor:pointer}.t86-debug-actions button:hover{background:#282313}
+      #t86DebugEntries{padding:12px;overflow:auto;flex:1;font-size:12px}.t86-debug-line{border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);border-radius:12px;margin-bottom:10px;padding:10px}.t86-debug-line.error{border-color:rgba(255,80,80,.45)}.t86-debug-line.warn{border-color:rgba(255,190,80,.5)}.t86-debug-line pre{white-space:pre-wrap;max-height:180px;overflow:auto;background:#050505;border-radius:8px;padding:8px;color:#ddd}
+      .t86-version-stamp{position:fixed;left:10px;bottom:10px;z-index:999997;font-size:10px;opacity:.42;background:#111;color:#d4af37;border:1px solid rgba(212,175,55,.35);border-radius:8px;padding:4px 6px;pointer-events:none}
+    `;
+    document.head.appendChild(style);
+    const fab = document.createElement('button');
+    fab.id = 't86DebugFab';
+    fab.type = 'button';
+    fab.textContent = 'LOG';
+    const panel = document.createElement('section');
+    panel.id = 't86DebugPanel';
+    panel.innerHTML = `<div class="t86-debug-head"><div><div class="t86-debug-title">THE86 DEBUG</div><small>v4.9.8 real debug</small></div><button type="button" id="t86DebugClose">Cerrar</button></div><div class="t86-debug-actions"><button type="button" id="t86DebugDiag">Diagnóstico sidebar</button><button type="button" id="t86DebugCopy">Copiar log</button><button type="button" id="t86DebugDownload">Descargar JSON</button><button type="button" id="t86DebugClear">Limpiar</button></div><div id="t86DebugEntries"></div>`;
+    const stamp = document.createElement('div');
+    stamp.className = 't86-version-stamp';
+    stamp.textContent = 'v4.9.8';
+    document.body.appendChild(fab);
+    document.body.appendChild(panel);
+    document.body.appendChild(stamp);
+    fab.addEventListener('click', () => { panel.classList.toggle('open'); render(); });
+    panel.querySelector('#t86DebugClose').addEventListener('click', () => panel.classList.remove('open'));
+    panel.querySelector('#t86DebugDiag').addEventListener('click', () => push('log', 'Diagnóstico sidebar', collectSidebar()));
+    panel.querySelector('#t86DebugCopy').addEventListener('click', copy);
+    panel.querySelector('#t86DebugDownload').addEventListener('click', download);
+    panel.querySelector('#t86DebugClear').addEventListener('click', () => { entries.length = 0; render(); });
+    push('log', 'Debug panel mounted', collectSidebar());
+  };
+  window.T86Debug = { __installed:true, entries, log:(m,d)=>push('log',m,d), warn:(m,d)=>push('warn',m,d), error:(m,d)=>push('error',m,d), collectSidebar, render, mount };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
+  else mount();
+  window.addEventListener('keydown', (event) => {
+    if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 'd') {
+      mount();
+      document.getElementById('t86DebugPanel')?.classList.toggle('open');
+      render();
+    }
+  });
+})();
+
+
 const workspacePath = ["workspaces", WORKSPACE_ID];
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
