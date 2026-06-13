@@ -803,7 +803,7 @@ const viewTitles = {
   stages: "Etapas de trabajo",
   profiles: "Perfiles del equipo",
   roles: "Roles del equipo",
-  teamTasks: "Tareas del equipo",
+  teamTasks: "Tareas a realizar",
   products: "Productos y colecciones",
   audit: "Auditoría de tienda",
   competitors: "Investigación de competidores",
@@ -904,8 +904,8 @@ function profileWeekGuideCompact(profile) {
   }).join("");
   return `<section class="profile-week-guide-compact">
     <div class="profile-compact-head mini-head">
-      <div><span class="eyebrow">Guía semanal compacta</span><h4>Intensidad y avance por día</h4><p>Las tareas completas ya no viven expandidas dentro del perfil. Revísalas en Equipo → Tareas.</p></div>
-      <button class="soft-btn" data-open-team-tasks="${profile.id}">Abrir tareas</button>
+      <div><span class="eyebrow">Guía semanal compacta</span><h4>Intensidad y avance por día</h4><p>El perfil solo muestra salud de trabajo. La operación diaria vive en Equipo → Tareas a realizar.</p></div>
+      <button class="soft-btn" data-open-profile-week="${profile.id}">Ver distribución semanal</button>
     </div>
     <div class="day-guide-grid">${cards}</div>
   </section>`;
@@ -954,13 +954,13 @@ function renderTeamTasks() {
   const completedToday = tasksToday.filter(t => t.status === "completed").length;
   const donePercent = tasksToday.length ? Math.round((completedToday / tasksToday.length) * 100) : 0;
   const activeRoles = profileRoleLabels(profile);
-  container.innerHTML = `<div class="notice learning-notice"><strong>Tareas vive fuera del perfil:</strong> aquí se trabaja el día actual. El perfil queda como ficha compacta de responsabilidad, carga y salud de trabajo.</div>
+  container.innerHTML = `<div class="notice learning-notice"><strong>Centro operativo de tareas:</strong> aquí se trabaja el día actual. El perfil ya no genera tareas, solo resume responsabilidad, carga y salud de trabajo.</div>
     <section class="team-task-hub card">
       <div class="team-task-top">
-        <div><span class="eyebrow">Tareas del equipo</span><h3>Seleccionar usuario</h3><p>El sistema usa los roles activos del usuario para generar y distribuir tareas en los días recomendados.</p></div>
+        <div><span class="eyebrow">Tareas a realizar</span><h3>Seleccionar usuario</h3><p>El sistema usa los roles activos del usuario para generar y distribuir tareas en los días recomendados.</p></div>
         <div class="team-task-actions">
           <select id="teamTaskProfileSelect">${profiles.map(p => `<option value="${escapeAttr(p.id)}" ${p.id === profile.id ? "selected" : ""}>${escapeHtml(p.name || "Perfil")}</option>`).join("")}</select>
-          <button class="primary-btn" data-sync-role-tasks="${profile.id}">Actualizar tareas según roles</button>
+          <button class="primary-btn" data-sync-role-tasks="${profile.id}">Preparar tareas según roles activos</button>
         </div>
       </div>
       <div class="task-hub-summary">
@@ -975,7 +975,7 @@ function renderTeamTasks() {
         <div class="guide-meter-row"><small>Completado ${donePercent}%</small><div class="load-bar completion-bar"><i style="width:${donePercent}%"></i></div></div>
       </div>
       <div class="daily-task-list">
-        ${tasksToday.length ? tasksToday.map(renderDailyTaskCard).join("") : `<div class="empty-day big-empty">No hay tareas para hoy. Actualiza tareas según roles o revisa la distribución semanal.</div>`}
+        ${tasksToday.length ? tasksToday.map(renderDailyTaskCard).join("") : `<div class="empty-day big-empty">No hay tareas para hoy. Prepara tareas según roles activos o revisa la distribución semanal.</div>`}
       </div>
       <div class="modal-actions left-actions"><button class="soft-btn" data-open-week-distribution="${profile.id}">Ver distribución de la semana</button></div>
     </section>`;
@@ -2126,7 +2126,6 @@ function brandRoleSummary(profile) {
       </div>
       <div class="small-actions role-config-actions">
         <button class="soft-btn" data-edit-profile="${profile.id}">Configurar roles</button>
-        <button class="primary-btn" data-assign-role="${profile.id}:${BRAND_ROLE_NAME}">Asignar Dirección de marca</button>
       </div>
     </div>`;
   }
@@ -2158,7 +2157,7 @@ function brandRoleSummary(profile) {
       <div class="${reviewPercent >= 70 ? "state-green" : reviewPercent >= 35 ? "state-yellow" : roleTasks.length ? "state-orange" : "state-neutral"}"><span>COH</span><i style="width:${reviewPercent}%"></i><b>${reviewCount}</b></div>
     </div>
     <div class="role-connection-stats"><span>${roleTasks.length} tareas</span><span>${completed} hechas</span><span>${pending} pendientes</span><span>${totalMinutes} min</span><span>${totalWeighted} min pond.</span></div>
-    ${roleTasks.length ? `<div class="role-task-preview">${roleTasks.slice(0,3).map(t => `<button type="button" data-weekly-task-detail="${t.id}"><strong>${escapeHtml(t.title)}</strong><small>${dayLabel(t.assignedDay)} · ${intensityLabel(t.intensity)}</small></button>`).join("")}</div>` : `<div class="calendar-suggestion">Todavía no hay tareas de marca generadas. La creación de tareas ahora vive en Equipo → Tareas.</div>`}
+    <div class="calendar-suggestion">Las tareas de este rol se generan y se trabajan en Equipo → Tareas a realizar. Este panel solo resume estado, carga y avance.</div>
   </div>`;
 }
 
@@ -2325,7 +2324,6 @@ function strategicRoleSummary(profile) {
       </div>
       <div class="small-actions role-config-actions">
         <button class="soft-btn" data-edit-profile="${profile.id}">Configurar roles</button>
-        <button class="soft-btn" data-assign-role="${profile.id}:${STRATEGIC_ROLE_NAME}">Asignar Dirección estratégica</button>
       </div>
     </div>`;
   }
@@ -2356,7 +2354,7 @@ function strategicRoleSummary(profile) {
       <div class="${completionPercent >= 80 ? "state-green" : completionPercent >= 40 ? "state-yellow" : roleTasks.length ? "state-orange" : "state-neutral"}"><span>HEC</span><i style="width:${completionPercent}%"></i><b>${completionPercent}%</b></div>
     </div>
     <div class="role-connection-stats"><span>${roleTasks.length} tareas</span><span>${completed} hechas</span><span>${pending} pendientes</span><span>${totalMinutes} min</span><span>${totalWeighted} min pond.</span></div>
-    ${roleTasks.length ? `<div class="role-task-preview">${roleTasks.slice(0,3).map(t => `<button type="button" data-weekly-task-detail="${t.id}"><strong>${escapeHtml(t.title)}</strong><small>${dayLabel(t.assignedDay)} · ${intensityLabel(t.intensity)}</small></button>`).join("")}</div>` : `<div class="calendar-suggestion">Todavía no hay tareas estratégicas generadas. La creación de tareas ahora vive en Equipo → Tareas.</div>`}
+    <div class="calendar-suggestion">Las tareas de este rol se generan y se trabajan en Equipo → Tareas a realizar. Este panel solo resume estado, carga y avance.</div>
   </div>`;
 }
 
@@ -3104,7 +3102,6 @@ function renderProfiles() {
   $$(`[data-edit-availability]`).forEach(btn => btn.addEventListener("click", () => editAvailability(btn.dataset.editAvailability)));
   $$(`[data-profile-info]`).forEach(btn => btn.addEventListener("click", () => openProfileImportance(btn.dataset.profileInfo)));
   $$(`[data-open-team-tasks]`).forEach(btn => btn.addEventListener("click", () => { localStorage.setItem("the86_team_tasks_profile", btn.dataset.openTeamTasks); switchView("teamTasks"); }));
-  $$(`[data-assign-role]`).forEach(btn => btn.addEventListener("click", () => quickAssignRole(btn.dataset.assignRole)));
   $$(`[data-weekly-task-detail]`).forEach(btn => btn.addEventListener("click", () => openWeeklyTaskDetail(btn.dataset.weeklyTaskDetail)));
   $$(`[data-calendar-help]`).forEach(btn => btn.addEventListener("click", () => openCalendarHelp(btn.dataset.calendarHelp)));
   $$(`[data-workload-help]`).forEach(btn => btn.addEventListener("click", () => openWorkloadHelp(btn.dataset.workloadHelp)));
