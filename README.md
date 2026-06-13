@@ -1,3 +1,3 @@
-# The 86 Club Workspace V4.9.13
+# The86Club Workspace V4.9.14
 
-Adds task routes to workspace sections and weekly execution bridge notes.
+Limpia tareas estratégicas obsoletas/genéricas y fuerza el banco técnico actual de Dirección estratégica.

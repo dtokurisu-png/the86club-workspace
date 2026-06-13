@@ -1,6 +1,6 @@
 import { auth, db, WORKSPACE_ID } from "./firebase.js";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { collection, doc, getDoc, setDoc, addDoc, updateDoc, onSnapshot, serverTimestamp, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { collection, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const workspacePath = ["workspaces", WORKSPACE_ID];
 const $ = (sel) => document.querySelector(sel);
@@ -1035,7 +1035,8 @@ function renderTeamTasks() {
 async function syncRoleTasksForProfile(profileId, options = {}) {
   const profile = (cache.profiles || []).find(p => p.id === profileId);
   if (!profile) return;
-  const currentTasks = getProfileWeeklyTasks(profile.id);
+  await cleanupObsoleteRoleTasks(profile.id);
+  const currentTasks = getProfileWeeklyTasks(profile.id).filter(t => !isObsoleteRoleTask(t));
   const planned = [];
   if (profileHasStrategicRole(profile)) {
     selectStrategicTasksForProfile(profile).forEach(task => {
@@ -1083,16 +1084,67 @@ function openWeekDistribution(profileId) {
   $$(`[data-task-route]`).forEach(btn => btn.addEventListener("click", () => navigateTaskTarget(btn.dataset.taskRoute)));
 }
 
+const OBSOLETE_STRATEGIC_TASK_IDS = new Set([
+  "reduce_low_impact_work",
+  "prioritize_week_actions",
+  "check_company_balance",
+  "quick_direction_check",
+  "record_strategic_decision"
+]);
+const OBSOLETE_STRATEGIC_TASK_TITLES = [
+  "pausar o reducir tareas de bajo impacto",
+  "priorizar acciones de la semana",
+  "chequeo rápido de dirección",
+  "registrar decisión estratégica importante"
+];
+const CURRENT_STRATEGIC_TASK_IDS = new Set(STRATEGIC_ROLE_TASK_BANK.map(t => t.id));
+const CURRENT_BRAND_TASK_IDS = new Set(BRAND_ROLE_TASK_BANK.map(t => t.id));
 const AUTO_ROLE_TASK_SYNCING = new Set();
+const OBSOLETE_ROLE_TASK_CLEANING = new Set();
+
+function isObsoleteRoleTask(task = {}) {
+  const taskId = String(task.roleTaskId || task.strategicTaskId || task.brandTaskId || task.id || "").trim();
+  const title = String(task.title || "").toLowerCase().trim();
+  if (task.roleId === STRATEGIC_ROLE_ID || task.roleName === STRATEGIC_ROLE_NAME) {
+    if (OBSOLETE_STRATEGIC_TASK_IDS.has(taskId)) return true;
+    if (taskId && !CURRENT_STRATEGIC_TASK_IDS.has(taskId)) return true;
+    if (OBSOLETE_STRATEGIC_TASK_TITLES.some(t => title.includes(t))) return true;
+  }
+  if (task.roleId === BRAND_ROLE_ID || task.roleName === BRAND_ROLE_NAME) {
+    if (taskId && !CURRENT_BRAND_TASK_IDS.has(taskId)) return true;
+  }
+  return false;
+}
+
+async function cleanupObsoleteRoleTasks(profileId) {
+  if (OBSOLETE_ROLE_TASK_CLEANING.has(profileId)) return 0;
+  const profileTasks = getProfileWeeklyTasks(profileId).filter(isObsoleteRoleTask);
+  if (!profileTasks.length) return 0;
+  OBSOLETE_ROLE_TASK_CLEANING.add(profileId);
+  let deleted = 0;
+  try {
+    for (const task of profileTasks) {
+      if (!task.id) continue;
+      await deleteDoc(workspaceDoc("profileWeeklyTasks", task.id));
+      deleted++;
+    }
+    await logActivity("cleanup_role_tasks", "profileWeeklyTasks", `Eliminó ${deleted} tareas estratégicas obsoletas/genéricas del perfil.`);
+  } finally {
+    setTimeout(() => OBSOLETE_ROLE_TASK_CLEANING.delete(profileId), 1500);
+  }
+  return deleted;
+}
+
 async function autoEnsureRoleTasksForProfile(profileId) {
   const profile = (cache.profiles || []).find(p => p.id === profileId);
   if (!profile || AUTO_ROLE_TASK_SYNCING.has(profileId)) return;
   if (!profileHasStrategicRole(profile) && !profileHasBrandRole(profile)) return;
-  const existing = getProfileWeeklyTasks(profile.id).filter(t => t.source === "role" || t.roleId || t.roleName);
-  if (existing.length) return;
   AUTO_ROLE_TASK_SYNCING.add(profileId);
   try {
-    await syncRoleTasksForProfile(profileId, { silent: true });
+    const removed = await cleanupObsoleteRoleTasks(profileId);
+    const validExisting = getProfileWeeklyTasks(profile.id)
+      .filter(t => (t.source === "role" || t.roleId || t.roleName) && !isObsoleteRoleTask(t));
+    if (!validExisting.length || removed) await syncRoleTasksForProfile(profileId, { silent: true });
   } finally {
     setTimeout(() => AUTO_ROLE_TASK_SYNCING.delete(profileId), 1500);
   }
@@ -2026,8 +2078,8 @@ function workspaceSignals(profileId) {
     marketingishTasks,
     marketingLow: designishTasks >= 2 && marketingishTasks === 0,
     tasksPending: profileTasks.filter(t => t.status !== "completed").length,
-    existingStrategic: profileTasks.filter(t => t.roleId === STRATEGIC_ROLE_ID || t.roleName === STRATEGIC_ROLE_NAME),
-    existingBrand: profileTasks.filter(t => t.roleId === BRAND_ROLE_ID || t.roleName === BRAND_ROLE_NAME),
+    existingStrategic: profileTasks.filter(t => (t.roleId === STRATEGIC_ROLE_ID || t.roleName === STRATEGIC_ROLE_NAME) && !isObsoleteRoleTask(t)),
+    existingBrand: profileTasks.filter(t => (t.roleId === BRAND_ROLE_ID || t.roleName === BRAND_ROLE_NAME) && !isObsoleteRoleTask(t)),
     hasProducts: (cache.products || []).length > 0,
     hasPromotion: (cache.promotion || []).length > 0,
     hasAudit: (cache.audit || []).length > 0,
@@ -3214,10 +3266,9 @@ function taskChecklistItems(task = {}, bank = null) {
   }
   if (task.roleId === STRATEGIC_ROLE_ID || task.roleName === STRATEGIC_ROLE_NAME) {
     return [
-      { title: "Levantar datos", detail: "Revisa ventas, tareas, inversión, marketing, Shopify, operación o decisiones según el enfoque de la tarea." },
-      { title: "Detectar señal principal", detail: "Identifica el dato o patrón más importante. No escribas sensaciones sin evidencia." },
-      { title: "Definir acción correctiva", detail: "Convierte la lectura en una acción concreta: corregir, medir, impulsar, pausar, registrar o priorizar." },
-      { title: "Guardar evidencia", detail: "Registra conclusión, dato revisado y decisión para que el cierre semanal pueda leerlo." }
+      { title: "Abrir sección conectada", detail: "Usa el botón de ruta de trabajo de esta tarea. No busques la sección a mano: la tarea debe empujarte al lugar correcto del workspace." },
+      { title: "Registrar el dato específico", detail: "Completa el formulario o registro de esa sección. La tarea solo cuenta si queda un dato real: venta, tráfico, costo, decisión, auditoría, producto o riesgo." },
+      { title: "Confirmar lectura técnica", detail: "Vuelve a la tarea y revisa si el dato registrado responde al objetivo técnico de esta tarea. No cierres por opinión; cierra por dato registrado." }
     ];
   }
   return [
