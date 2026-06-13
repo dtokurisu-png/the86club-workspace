@@ -1,3 +1,3 @@
-# The 86 Club Workspace V4.9.10
+# The 86 Club Workspace V4.9.11
 
-Fixes team task architecture: profile is compact only, task generation and daily task work move to Equipo → Tareas a realizar.
+Restores the locked collapsible sidebar container while keeping V4.9.10 task architecture changes.

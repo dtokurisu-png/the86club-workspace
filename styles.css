@@ -1911,3 +1911,74 @@ html:not([data-theme="dark"]) .field select{background:#ffffff;border-color:#c8c
   .team-task-actions { width: 100%; justify-content: stretch; }
   .team-task-actions select, .team-task-actions button { width: 100%; }
 }
+
+
+/* V4.9.11 - Restore locked collapsible sidebar container */
+.sidebar{
+  height:100vh !important;
+  max-height:100vh !important;
+  overflow:hidden !important;
+  position:sticky !important;
+  top:0 !important;
+  display:flex !important;
+  flex-direction:column !important;
+}
+.nav.nav-categorized{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+  gap:10px !important;
+  padding-right:4px !important;
+  scrollbar-width:none !important;
+}
+.nav.nav-categorized::-webkit-scrollbar{width:0;height:0}
+.nav-group{
+  flex:0 0 auto !important;
+  overflow:hidden !important;
+  border:1px solid var(--line) !important;
+  border-radius:18px !important;
+  background:rgba(255,255,255,.025) !important;
+}
+.nav-group-toggle{
+  width:100% !important;
+  display:grid !important;
+  grid-template-columns:auto 1fr !important;
+  align-items:center !important;
+  gap:10px !important;
+}
+.nav-group-items{
+  display:grid !important;
+  gap:7px !important;
+  padding:0 10px 10px !important;
+  max-height:0 !important;
+  overflow:hidden !important;
+  transition:max-height .22s ease, padding .22s ease !important;
+}
+.nav-group:not([data-collapsed="true"]) .nav-group-items{
+  max-height:320px !important;
+  overflow-y:auto !important;
+  scrollbar-width:none !important;
+}
+.nav-group:not([data-collapsed="true"]) .nav-group-items::-webkit-scrollbar{width:0;height:0}
+.nav-group[data-collapsed="true"] .nav-group-items{
+  max-height:0 !important;
+  padding-top:0 !important;
+  padding-bottom:0 !important;
+  display:grid !important;
+}
+.nav-group .nav-btn{
+  width:100% !important;
+  margin:0 !important;
+}
+.sidebar-footer{
+  flex:0 0 auto !important;
+  margin-top:0 !important;
+}
+@media (max-width:960px){
+  .sidebar{height:auto !important; max-height:none !important; overflow:visible !important; position:static !important}
+  .nav.nav-categorized{max-height:none !important; overflow:visible !important}
+  .nav-group:not([data-collapsed="true"]) .nav-group-items{max-height:none !important; overflow:visible !important}
+}
