@@ -1089,20 +1089,43 @@ const COLLECTION_LABELS = {
 const ROLE_OPTIONS = [
   "Pendiente",
   "Dirección estratégica del negocio",
-  "Administración del workspace",
-  "Dirección de marca",
-  "Dirección visual",
-  "Diseño conceptual",
-  "Producción gráfica / Photoshop",
-  "Shopify & experiencia web",
-  "Marketing orgánico",
-  "Contenido & comunidad",
-  "Campañas pagadas",
-  "Datos & análisis",
-  "Producto & colecciones",
-  "Operaciones & archivos",
-  "Finanzas & participación"
+  "Dirección de marca"
 ];
+
+function uniqueClean(values = []) {
+  const seen = new Set();
+  return values.map(v => String(v || "").trim()).filter(Boolean).filter(v => {
+    const key = normalizeRoleText(v);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function implementedRoleOptions() {
+  const values = ["Pendiente", ...ROLE_OPTIONS];
+  (cache.roles || []).forEach(role => {
+    const name = role.title || role.name;
+    if (name && !/pendiente/i.test(name)) values.push(name);
+  });
+  (cache.profiles || []).forEach(profile => {
+    if (profile.primaryRole && !/^(pendiente|sin asignar)$/i.test(profile.primaryRole)) values.push(profile.primaryRole);
+    String(profile.subRoles || "").split(",").map(x => x.trim()).filter(Boolean).forEach(x => values.push(x));
+  });
+  return uniqueClean(values);
+}
+
+function profileFieldSchema() {
+  return [
+    {name:"name", label:"Nombre del perfil", required:true, placeholder:"Christopher / Adrián"},
+    {name:"email", label:"Correo del usuario", type:"email", placeholder:"correo@the86club.com"},
+    {name:"avatarUrl", label:"Foto o avatar opcional", type:"url", placeholder:"Link de imagen en Drive o recurso público"},
+    {name:"primaryRole", label:"Rol principal", type:"select", required:true, options:implementedRoleOptions},
+    {name:"subRoles", label:"Subroles funcionales", type:"checkboxGroup", options:implementedRoleOptions, helper:"Marca los roles de apoyo disponibles. Solo aparecen roles ya integrados o roles que ya existen en perfiles/colección de roles."},
+    {name:"weeklyLoadStatus", label:"Estado de carga semanal", type:"select", options:["Sin evaluar","Verde — ritmo sano","Amarillo — atención","Rojo — exceso o desequilibrio"]},
+    {name:"notes", label:"Notas, límites y contexto del perfil", type:"textarea", placeholder:"Responsabilidades, límites, acuerdos o riesgos de saturación. Este campo lo escribe el usuario; luego el sistema lo usará para interpretar carga y planificación."}
+  ];
+}
 
 
 const STRATEGIC_DIRECTION_ROLE = {
@@ -2183,15 +2206,7 @@ async function generateStrategicTasks(profileId) {
 }
 
 const FIELD_SCHEMAS = {
-  profiles: [
-    {name:"name", label:"Nombre del perfil", required:true, placeholder:"Christopher / Adrián"},
-    {name:"email", label:"Correo del usuario", type:"email", placeholder:"correo@the86club.com"},
-    {name:"avatarUrl", label:"Foto o avatar opcional", type:"url", placeholder:"Link de imagen en Drive o recurso público"},
-    {name:"primaryRole", label:"Rol principal", type:"select", required:true, options:ROLE_OPTIONS},
-    {name:"subRoles", label:"Subroles opcionales", type:"textarea", placeholder:"Escribe subroles separados por coma. Ejemplo: Dirección visual, Producto & colecciones"},
-    {name:"weeklyLoadStatus", label:"Estado de carga semanal", type:"select", options:["Sin evaluar","Verde — ritmo sano","Amarillo — atención","Rojo — exceso o desequilibrio"]},
-    {name:"notes", label:"Notas, límites y contexto del perfil", type:"textarea", placeholder:"Responsabilidades, límites, acuerdos o riesgos de saturación."}
-  ],
+  profiles: profileFieldSchema(),
   roles: [
     {name:"title", label:"Título del rol", required:true, placeholder:"Dirección visual / Marketing / Editor"},
     {name:"owner", label:"Responsable", placeholder:"Christopher / Socio / Cuenta empresa"},
@@ -2330,6 +2345,12 @@ function openRecordModal({ title, collectionName, schema, initial = {}, onSave }
       </div>`;
     const form = root.querySelector("#recordModalForm");
     schema.forEach(f => {
+      if (f.type === "checkboxGroup") {
+        const raw = initial[f.name];
+        const selected = new Set(String(raw || "").split(",").map(x => normalizeRoleText(x.trim())).filter(Boolean));
+        form.querySelectorAll(`[name="${f.name}"]`).forEach(input => { input.checked = selected.has(normalizeRoleText(input.value)); });
+        return;
+      }
       const el = form.elements[f.name];
       if (!el) return;
       let val = initial[f.name];
@@ -2343,6 +2364,10 @@ function openRecordModal({ title, collectionName, schema, initial = {}, onSave }
       e.preventDefault();
       const data = {};
       schema.forEach(f => {
+        if (f.type === "checkboxGroup") {
+          data[f.name] = [...form.querySelectorAll(`[name="${f.name}"]:checked`)].map(input => input.value.trim()).filter(Boolean).join(", ");
+          return;
+        }
         const el = form.elements[f.name];
         if (!el) return;
         let value = el.value.trim();
@@ -2385,7 +2410,7 @@ function openInfoModal({ eyebrow = "Guía", title = "Información", html = "" })
 function closeModal() { const root = document.querySelector("#appModalRoot"); if (root) root.innerHTML = ""; }
 function defaultForField(f) {
   if (f.type === "date") return new Date().toISOString().slice(0,10);
-  if (f.type === "select") return f.options?.[0] || "";
+  if (f.type === "select") { const opts = typeof f.options === "function" ? f.options() : (f.options || []); return opts[0] || ""; }
   if (f.name === "investedBy") return currentUser?.email || "";
   if (f.name === "createdBy") return currentUser?.email || "";
   return "";
@@ -2399,7 +2424,13 @@ function fieldInputHtml(f) {
     return `<label class="field full">${labelBlock}<div class="field-input-box"><textarea name="${f.name}" ${placeholder} ${required}></textarea></div></label>`;
   }
   if (f.type === "select") {
-    return `<label class="field">${labelBlock}<div class="field-input-box"><select name="${f.name}" ${required}>${(f.options||[]).map(o=>`<option value="${escapeAttr(o)}">${o}</option>`).join("")}</select></div></label>`;
+    const opts = typeof f.options === "function" ? f.options() : (f.options || []);
+    return `<label class="field">${labelBlock}<div class="field-input-box"><select name="${f.name}" ${required}>${opts.map(o=>`<option value="${escapeAttr(o)}">${escapeHtml(o)}</option>`).join("")}</select></div></label>`;
+  }
+  if (f.type === "checkboxGroup") {
+    const opts = (typeof f.options === "function" ? f.options() : (f.options || [])).filter(o => !/^(Pendiente|Sin asignar)$/i.test(String(o)));
+    const helper = f.helper ? `<p class="field-helper">${escapeHtml(f.helper)}</p>` : "";
+    return `<label class="field full checkbox-field">${labelBlock}<div class="field-input-box"><details class="checkbox-dropdown" open><summary>Seleccionar subroles disponibles</summary><div class="checkbox-options">${opts.map(o=>`<label class="checkbox-option"><input type="checkbox" name="${f.name}" value="${escapeAttr(o)}" /><span>${escapeHtml(o)}</span></label>`).join("")}</div></details>${helper}</div></label>`;
   }
   return `<label class="field">${labelBlock}<div class="field-input-box"><input name="${f.name}" type="${f.type || "text"}" ${placeholder} ${required}/></div></label>`;
 }
@@ -2912,12 +2943,20 @@ function openWeeklyTaskDetail(taskId) {
   });
 }
 
+function normalizeSubRoleSelection(subRoles = "", primaryRole = "") {
+  const primaryKey = normalizeRoleText(primaryRole);
+  return uniqueClean(String(subRoles || "").split(",").map(x => x.trim()).filter(Boolean))
+    .filter(role => normalizeRoleText(role) !== primaryKey && !/^(pendiente|sin asignar)$/i.test(role))
+    .join(", ");
+}
+
 async function addProfile() {
   await openRecordModal({
     title: "Agregar perfil de equipo",
     collectionName: "Perfil",
-    schema: FIELD_SCHEMAS.profiles,
+    schema: profileFieldSchema(),
     onSave: async (data) => {
+      data.subRoles = normalizeSubRoleSelection(data.subRoles, data.primaryRole);
       await addDoc(workspaceCol("profiles"), { ...data, createdBy: currentUser.email, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
       await logActivity("create_profile", "profiles", `Creó perfil de equipo: ${data.name}`);
     }
@@ -2955,9 +2994,10 @@ async function editProfile(id) {
   await openRecordModal({
     title: `Editar perfil: ${profile.name || "equipo"}`,
     collectionName: "Perfil",
-    schema: FIELD_SCHEMAS.profiles,
+    schema: profileFieldSchema(),
     initial: profile,
     onSave: async (data) => {
+      data.subRoles = normalizeSubRoleSelection(data.subRoles, data.primaryRole);
       await updateDoc(workspaceDoc("profiles", id), { ...data, updatedAt: serverTimestamp() });
       await logActivity("edit_profile", "profiles", `Actualizó perfil de equipo: ${data.name || profile.name}`);
     }

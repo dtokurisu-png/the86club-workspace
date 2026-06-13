@@ -1769,3 +1769,15 @@ html:not([data-theme="dark"]) .field select{background:#ffffff;border-color:#c8c
     width: 100%;
   }
 }
+
+.checkbox-field .field-input-box{padding:14px}
+.checkbox-dropdown{border:1px solid var(--border); border-radius:16px; background:var(--input); overflow:hidden}
+.checkbox-dropdown summary{cursor:pointer; padding:13px 14px; font-weight:900; color:var(--text); list-style:none; display:flex; align-items:center; justify-content:space-between; gap:12px}
+.checkbox-dropdown summary::-webkit-details-marker{display:none}
+.checkbox-dropdown summary::after{content:"▾"; color:var(--accent-strong); font-size:14px}
+.checkbox-dropdown:not([open]) summary::after{content:"▸"}
+.checkbox-options{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; padding:12px; border-top:1px solid var(--border); background:var(--panel-soft)}
+.checkbox-option{display:flex; align-items:center; gap:10px; border:1px solid var(--border); border-radius:14px; padding:10px 12px; background:var(--panel); cursor:pointer; font-weight:800; color:var(--text)}
+.checkbox-option input{width:auto; min-height:auto; accent-color:var(--accent); box-shadow:none}
+.checkbox-option:hover{border-color:color-mix(in srgb, var(--accent) 60%, var(--border)); box-shadow:0 0 0 3px var(--accent-soft)}
+.field-helper{margin:10px 2px 0; color:var(--muted); font-size:13px; line-height:1.45}
