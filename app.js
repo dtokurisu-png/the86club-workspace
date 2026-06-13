@@ -1098,10 +1098,12 @@ const OBSOLETE_STRATEGIC_TASK_TITLES = [
   "registrar decisión estratégica importante"
 ];
 function getCurrentStrategicTaskIds() {
-  return new Set(STRATEGIC_ROLE_TASK_BANK.map(t => t.id));
+  const bank = Array.isArray(STRATEGIC_ROLE_TASK_BANK) ? STRATEGIC_ROLE_TASK_BANK : [];
+  return new Set(bank.map(t => t.id));
 }
 function getCurrentBrandTaskIds() {
-  return new Set(BRAND_ROLE_TASK_BANK.map(t => t.id));
+  const bank = Array.isArray(BRAND_ROLE_TASK_BANK) ? BRAND_ROLE_TASK_BANK : [];
+  return new Set(bank.map(t => t.id));
 }
 const AUTO_ROLE_TASK_SYNCING = new Set();
 const OBSOLETE_ROLE_TASK_CLEANING = new Set();
@@ -1657,9 +1659,9 @@ const BRAND_DIRECTION_ROLE = {
 };
 
 
-const STRATEGIC_ROLE_ID = "strategic_direction";
-const STRATEGIC_ROLE_NAME = "Dirección estratégica del negocio";
-const STRATEGIC_ROLE_TASK_BANK = [
+var STRATEGIC_ROLE_ID = "strategic_direction";
+var STRATEGIC_ROLE_NAME = "Dirección estratégica del negocio";
+var STRATEGIC_ROLE_TASK_BANK = [
   {
     id: "strategic_area_balance_audit",
     title: "Auditoría semanal de balance por área",
@@ -1845,9 +1847,9 @@ const STRATEGIC_ROLE_TASK_BANK = [
 
 
 
-const BRAND_ROLE_ID = "brand_direction";
-const BRAND_ROLE_NAME = "Dirección de marca";
-const BRAND_ROLE_TASK_BANK = [
+var BRAND_ROLE_ID = "brand_direction";
+var BRAND_ROLE_NAME = "Dirección de marca";
+var BRAND_ROLE_TASK_BANK = [
   {
     id: "weekly_brand_coherence_evaluation",
     title: "Evaluación semanal de coherencia de marca",
