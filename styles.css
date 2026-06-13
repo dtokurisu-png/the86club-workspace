@@ -73,6 +73,9 @@ textarea { min-height: 92px; resize: vertical; }
 .workspace { max-width: 1400px; margin: 0 auto; }
 .topbar { display: flex; justify-content: space-between; gap: 18px; align-items: center; margin-bottom: 24px; }
 .user-chip { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 9px 12px; color: var(--muted); font-size: 13px; }
+.topbar-status { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; min-width: 190px; }
+.version-badge { align-self: flex-end; border: 1px solid rgba(232, 211, 145, 0.32); background: rgba(232, 211, 145, 0.10); color: var(--gold); border-radius: 999px; padding: 5px 10px; font-size: 11px; font-weight: 900; letter-spacing: 0.18em; text-transform: uppercase; box-shadow: 0 12px 30px rgba(0,0,0,0.14); }
+
 .view { display: none; }
 .active-view { display: block; }
 .grid { display: grid; gap: 16px; }
@@ -95,7 +98,7 @@ textarea { min-height: 92px; resize: vertical; }
 .empty-state { border: 1px dashed var(--line); border-radius: 18px; padding: 20px; color: var(--muted); background: var(--panel); }
 a { color: var(--accent-strong); }
 .small-actions { display:flex; gap:8px; flex-wrap: wrap; }
-@media (max-width: 960px) { .shell { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; } .login-card, .grid-2, .grid-3 { grid-template-columns: 1fr; } .topbar { display: grid; } }
+@media (max-width: 960px) { .shell { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; } .login-card, .grid-2, .grid-3 { grid-template-columns: 1fr; } .topbar { display: grid; } .topbar-status { align-items: flex-start; } .version-badge { align-self: flex-start; } }
 
 .notice {
   border: 1px solid var(--line);
