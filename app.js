@@ -803,6 +803,7 @@ const viewTitles = {
   stages: "Etapas de trabajo",
   profiles: "Perfiles del equipo",
   roles: "Roles del equipo",
+  teamTasks: "Tareas del equipo",
   products: "Productos y colecciones",
   audit: "Auditoría de tienda",
   competitors: "Investigación de competidores",
@@ -874,6 +875,169 @@ function renderWeeklyCalendar(profile) {
       }).join("")}
     </div>
   </section>`;
+}
+
+
+function todayKey() {
+  const idx = new Date().getDay();
+  return ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"][idx] || "monday";
+}
+
+function selectedTeamTaskProfileId() {
+  const saved = localStorage.getItem("the86_team_tasks_profile");
+  if (saved && (cache.profiles || []).some(p => p.id === saved)) return saved;
+  return (cache.profiles || [])[0]?.id || "";
+}
+
+function profileWeekGuideCompact(profile) {
+  const workload = weeklyWorkloadReport(profile, getProfileWeeklyTasks(profile.id));
+  const cards = workload.days.map(d => {
+    const completed = d.workload.dayTasks.filter(t => t.status === "completed").length;
+    const total = d.workload.dayTasks.length;
+    const donePercent = total ? Math.round((completed / total) * 100) : 0;
+    const intensityValue = Math.round(Math.min(d.workload.percent, 100));
+    return `<article class="day-guide-card workload-${d.workload.status.key}">
+      <div class="day-guide-head"><strong>${d.label.slice(0,3)}</strong><span>${workloadPercentLabel(d.workload.percent)}</span></div>
+      <div class="guide-meter-row"><small>Intensidad del día</small><div class="load-bar"><i style="width:${intensityValue}%"></i></div></div>
+      <div class="guide-meter-row"><small>Completado ${completed}/${total}</small><div class="load-bar completion-bar"><i style="width:${donePercent}%"></i></div></div>
+    </article>`;
+  }).join("");
+  return `<section class="profile-week-guide-compact">
+    <div class="profile-compact-head mini-head">
+      <div><span class="eyebrow">Guía semanal compacta</span><h4>Intensidad y avance por día</h4><p>Las tareas completas ya no viven expandidas dentro del perfil. Revísalas en Equipo → Tareas.</p></div>
+      <button class="soft-btn" data-open-team-tasks="${profile.id}">Abrir tareas</button>
+    </div>
+    <div class="day-guide-grid">${cards}</div>
+  </section>`;
+}
+
+function teamTasksForDay(profileId, dayKey = todayKey()) {
+  return getProfileWeeklyTasks(profileId).filter(t => (t.assignedDay || "monday") === dayKey);
+}
+
+function renderDailyTaskCard(task) {
+  const roleData = roleTaskStatusData(task);
+  return `<article class="daily-task-card ${task.status === "completed" ? "task-completed" : "task-pending"} ${roleData.className}">
+    <div class="daily-task-head">
+      <div><span class="role-source-badge ${roleData.className}">${escapeHtml(roleData.label)}</span><h4>${escapeHtml(task.title || "Tarea sin título")}</h4></div>
+      <span class="status-pill">${taskStatusLabel(task.status)}</span>
+    </div>
+    ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ""}
+    <div class="daily-task-meta">
+      <span>${taskMinutes(task)} min</span>
+      <span>${weightedTaskMinutes(task)} ponderados</span>
+      <span>${intensityLabel(task.intensity)}</span>
+    </div>
+    <div class="small-actions compact-actions">
+      <button class="soft-btn" data-weekly-task-detail="${task.id}">Ver detalle</button>
+      <button class="soft-btn" data-move-weekly-task="${task.id}">Mover</button>
+      <button class="soft-btn" data-toggle-weekly-task="${task.id}">${task.status === "completed" ? "Reabrir" : "Completar"}</button>
+    </div>
+  </article>`;
+}
+
+function renderTeamTasks() {
+  const container = document.getElementById("teamTasks");
+  if (!container) return;
+  const profiles = cache.profiles || [];
+  const selectedId = selectedTeamTaskProfileId();
+  const profile = profiles.find(p => p.id === selectedId) || profiles[0];
+  const dayKey = todayKey();
+  if (!profiles.length) {
+    container.innerHTML = `<div class="empty-state"><h3>Sin perfiles todavía</h3><p>Crea perfiles para poder distribuir tareas por usuario.</p></div>`;
+    return;
+  }
+  const tasksToday = teamTasksForDay(profile.id, dayKey);
+  const allTasks = getProfileWeeklyTasks(profile.id);
+  const workload = weeklyWorkloadReport(profile, allTasks);
+  const todayReport = workload.days.find(d => d.key === dayKey)?.workload;
+  const completedToday = tasksToday.filter(t => t.status === "completed").length;
+  const donePercent = tasksToday.length ? Math.round((completedToday / tasksToday.length) * 100) : 0;
+  const activeRoles = profileRoleLabels(profile);
+  container.innerHTML = `<div class="notice learning-notice"><strong>Tareas vive fuera del perfil:</strong> aquí se trabaja el día actual. El perfil queda como ficha compacta de responsabilidad, carga y salud de trabajo.</div>
+    <section class="team-task-hub card">
+      <div class="team-task-top">
+        <div><span class="eyebrow">Tareas del equipo</span><h3>Seleccionar usuario</h3><p>El sistema usa los roles activos del usuario para generar y distribuir tareas en los días recomendados.</p></div>
+        <div class="team-task-actions">
+          <select id="teamTaskProfileSelect">${profiles.map(p => `<option value="${escapeAttr(p.id)}" ${p.id === profile.id ? "selected" : ""}>${escapeHtml(p.name || "Perfil")}</option>`).join("")}</select>
+          <button class="primary-btn" data-sync-role-tasks="${profile.id}">Actualizar tareas según roles</button>
+        </div>
+      </div>
+      <div class="task-hub-summary">
+        <div><span>Usuario</span><strong>${escapeHtml(profile.name || "Perfil")}</strong></div>
+        <div><span>Día actual</span><strong>${dayLabel(dayKey)}</strong></div>
+        <div><span>Roles activos</span><strong>${activeRoles.length ? activeRoles.map(escapeHtml).join(" · ") : "Sin roles"}</strong></div>
+        <div><span>Avance hoy</span><strong>${completedToday}/${tasksToday.length}</strong></div>
+      </div>
+      <div class="daily-load-card workload-${todayReport?.status?.key || "healthy"}">
+        <div class="day-guide-head"><strong>Intensidad de hoy</strong><span>${todayReport ? workloadPercentLabel(todayReport.percent) : "S/D"}</span></div>
+        <div class="guide-meter-row"><small>Carga diaria</small><div class="load-bar"><i style="width:${todayReport ? Math.min(todayReport.percent, 100) : 0}%"></i></div></div>
+        <div class="guide-meter-row"><small>Completado ${donePercent}%</small><div class="load-bar completion-bar"><i style="width:${donePercent}%"></i></div></div>
+      </div>
+      <div class="daily-task-list">
+        ${tasksToday.length ? tasksToday.map(renderDailyTaskCard).join("") : `<div class="empty-day big-empty">No hay tareas para hoy. Actualiza tareas según roles o revisa la distribución semanal.</div>`}
+      </div>
+      <div class="modal-actions left-actions"><button class="soft-btn" data-open-week-distribution="${profile.id}">Ver distribución de la semana</button></div>
+    </section>`;
+  document.getElementById("teamTaskProfileSelect")?.addEventListener("change", e => {
+    localStorage.setItem("the86_team_tasks_profile", e.target.value);
+    renderTeamTasks();
+  });
+  $$(`[data-sync-role-tasks]`).forEach(btn => btn.addEventListener("click", () => syncRoleTasksForProfile(btn.dataset.syncRoleTasks)));
+  $$(`[data-open-week-distribution]`).forEach(btn => btn.addEventListener("click", () => openWeekDistribution(btn.dataset.openWeekDistribution)));
+  $$(`[data-weekly-task-detail]`).forEach(btn => btn.addEventListener("click", () => openWeeklyTaskDetail(btn.dataset.weeklyTaskDetail)));
+  $$(`[data-move-weekly-task]`).forEach(btn => btn.addEventListener("click", () => moveWeeklyTask(btn.dataset.moveWeeklyTask)));
+  $$(`[data-toggle-weekly-task]`).forEach(btn => btn.addEventListener("click", () => toggleWeeklyTask(btn.dataset.toggleWeeklyTask)));
+}
+
+async function syncRoleTasksForProfile(profileId) {
+  const profile = (cache.profiles || []).find(p => p.id === profileId);
+  if (!profile) return;
+  const currentTasks = getProfileWeeklyTasks(profile.id);
+  const planned = [];
+  if (profileHasStrategicRole(profile)) {
+    selectStrategicTasksForProfile(profile).forEach(task => {
+      const best = findStrategicTaskDay(profile, task, currentTasks, planned);
+      planned.push(buildStrategicWeeklyTask(profile, task, best.key));
+    });
+  }
+  if (profileHasBrandRole(profile)) {
+    selectBrandTasksForProfile(profile).forEach(task => {
+      const best = findBrandTaskDay(profile, task, currentTasks, planned);
+      planned.push(buildBrandWeeklyTask(profile, task, best.key));
+    });
+  }
+  if (!planned.length) {
+    openInfoModal({ eyebrow: "Sin tareas nuevas", title: "No hay nuevas tareas de rol", html: `<p>Este usuario ya tiene las tareas base de sus roles o todavía no hay suficiente señal para asignar más sin crear ruido.</p>` });
+    return;
+  }
+  for (const task of planned) await addDoc(workspaceCol("profileWeeklyTasks"), { ...task, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  await logActivity("sync_role_tasks", "profileWeeklyTasks", `Actualizó ${planned.length} tareas según roles para ${profile.name || "perfil"}`);
+  openInfoModal({ eyebrow: "Tareas actualizadas", title: `${planned.length} tareas agregadas`, html: `<p>Las tareas se distribuyeron según roles activos, disponibilidad, días ligeros/protegidos y carga diaria.</p>` });
+}
+
+function openWeekDistribution(profileId) {
+  const profile = (cache.profiles || []).find(p => p.id === profileId);
+  if (!profile) return;
+  const workload = weeklyWorkloadReport(profile, getProfileWeeklyTasks(profile.id));
+  openInfoModal({
+    eyebrow: "Distribución semanal",
+    title: `Semana de ${profile.name || "perfil"}`,
+    html: `<div class="week-distribution-modal">
+      ${workload.days.map(d => {
+        const completed = d.workload.dayTasks.filter(t => t.status === "completed").length;
+        const total = d.workload.dayTasks.length;
+        const donePercent = total ? Math.round((completed / total) * 100) : 0;
+        return `<article class="week-distribution-day workload-${d.workload.status.key}">
+          <div class="day-guide-head"><strong>${d.label}</strong><span>${workloadPercentLabel(d.workload.percent)} · ${completed}/${total}</span></div>
+          <div class="guide-meter-row"><small>Intensidad</small><div class="load-bar"><i style="width:${Math.min(d.workload.percent, 100)}%"></i></div></div>
+          <div class="guide-meter-row"><small>Completado</small><div class="load-bar completion-bar"><i style="width:${donePercent}%"></i></div></div>
+          <div class="distribution-task-list">${d.workload.dayTasks.length ? d.workload.dayTasks.map(t => `<button type="button" data-weekly-task-detail="${t.id}"><b>${escapeHtml(t.title || "Tarea")}</b><span>${escapeHtml(roleTaskStatusData(t).label)} · ${taskStatusLabel(t.status)}</span></button>`).join("") : `<p>Sin tareas.</p>`}</div>
+        </article>`;
+      }).join("")}
+    </div>`
+  });
+  $$(`[data-weekly-task-detail]`).forEach(btn => btn.addEventListener("click", () => openWeeklyTaskDetail(btn.dataset.weeklyTaskDetail)));
 }
 
 function weeklyTaskHtml(task) {
@@ -1075,6 +1239,9 @@ function switchView(view) {
   openGroupForView(view);
   if (view === "roles") {
     renderRoles();
+  }
+  if (view === "teamTasks") {
+    renderTeamTasks();
   }
 }
 
@@ -1991,8 +2158,7 @@ function brandRoleSummary(profile) {
       <div class="${reviewPercent >= 70 ? "state-green" : reviewPercent >= 35 ? "state-yellow" : roleTasks.length ? "state-orange" : "state-neutral"}"><span>COH</span><i style="width:${reviewPercent}%"></i><b>${reviewCount}</b></div>
     </div>
     <div class="role-connection-stats"><span>${roleTasks.length} tareas</span><span>${completed} hechas</span><span>${pending} pendientes</span><span>${totalMinutes} min</span><span>${totalWeighted} min pond.</span></div>
-    ${roleTasks.length ? `<div class="role-task-preview">${roleTasks.slice(0,3).map(t => `<button type="button" data-weekly-task-detail="${t.id}"><strong>${escapeHtml(t.title)}</strong><small>${dayLabel(t.assignedDay)} · ${intensityLabel(t.intensity)}</small></button>`).join("")}</div>` : `<div class="calendar-suggestion">Todavía no hay tareas de marca generadas. Usa el botón para crear evaluación de coherencia y tareas necesarias según contexto.</div>`}
-    <button class="primary-btn" data-generate-brand-tasks="${profile.id}">Generar tareas de marca</button>
+    ${roleTasks.length ? `<div class="role-task-preview">${roleTasks.slice(0,3).map(t => `<button type="button" data-weekly-task-detail="${t.id}"><strong>${escapeHtml(t.title)}</strong><small>${dayLabel(t.assignedDay)} · ${intensityLabel(t.intensity)}</small></button>`).join("")}</div>` : `<div class="calendar-suggestion">Todavía no hay tareas de marca generadas. La creación de tareas ahora vive en Equipo → Tareas.</div>`}
   </div>`;
 }
 
@@ -2190,8 +2356,7 @@ function strategicRoleSummary(profile) {
       <div class="${completionPercent >= 80 ? "state-green" : completionPercent >= 40 ? "state-yellow" : roleTasks.length ? "state-orange" : "state-neutral"}"><span>HEC</span><i style="width:${completionPercent}%"></i><b>${completionPercent}%</b></div>
     </div>
     <div class="role-connection-stats"><span>${roleTasks.length} tareas</span><span>${completed} hechas</span><span>${pending} pendientes</span><span>${totalMinutes} min</span><span>${totalWeighted} min pond.</span></div>
-    ${roleTasks.length ? `<div class="role-task-preview">${roleTasks.slice(0,3).map(t => `<button type="button" data-weekly-task-detail="${t.id}"><strong>${escapeHtml(t.title)}</strong><small>${dayLabel(t.assignedDay)} · ${intensityLabel(t.intensity)}</small></button>`).join("")}</div>` : `<div class="calendar-suggestion">Todavía no hay tareas estratégicas generadas. Usa el botón para crear una selección base según disponibilidad y carga.</div>`}
-    <button class="primary-btn" data-generate-strategic-tasks="${profile.id}">Generar tareas estratégicas</button>
+    ${roleTasks.length ? `<div class="role-task-preview">${roleTasks.slice(0,3).map(t => `<button type="button" data-weekly-task-detail="${t.id}"><strong>${escapeHtml(t.title)}</strong><small>${dayLabel(t.assignedDay)} · ${intensityLabel(t.intensity)}</small></button>`).join("")}</div>` : `<div class="calendar-suggestion">Todavía no hay tareas estratégicas generadas. La creación de tareas ahora vive en Equipo → Tareas.</div>`}
   </div>`;
 }
 
@@ -2498,6 +2663,7 @@ function renderAll() {
   renderStages();
   renderProfiles();
   renderRoles();
+  renderTeamTasks();
   renderGeneric("products", "Producto", ["name", "collection", "heroStatus", "status", "notes"]);
   renderGeneric("audit", "Auditoría", ["section", "score", "status", "notes"]);
   renderGeneric("competitors", "Competidor", ["brand", "url", "score", "notes"]);
@@ -2908,7 +3074,7 @@ function renderProfiles() {
           </div>
           ${availabilityDistributionCard(p, { available: avStats.available, light: avStats.light, protectedDays: avStats.protectedDays, maxHours: avStats.maxHours, closeDay: avStats.closeDay, taskCount: getProfileWeeklyTasks(p.id).length, completed: getProfileWeeklyTasks(p.id).filter(t => t.status === "completed").length }, avStats)}
         </div>
-        ${renderWeeklyCalendar(p)}
+        ${profileWeekGuideCompact(p)}
         <p class="profile-notes">${p.notes || "Sin notas todavía. Este espacio debe usarse para límites, responsabilidades y contexto de trabajo."}</p>
         <div class="small-actions">
           <button class="soft-btn" data-edit-profile="${p.id}">Editar perfil</button>
@@ -2937,9 +3103,8 @@ function renderProfiles() {
   $$(`[data-edit-profile]`).forEach(btn => btn.addEventListener("click", () => editProfile(btn.dataset.editProfile)));
   $$(`[data-edit-availability]`).forEach(btn => btn.addEventListener("click", () => editAvailability(btn.dataset.editAvailability)));
   $$(`[data-profile-info]`).forEach(btn => btn.addEventListener("click", () => openProfileImportance(btn.dataset.profileInfo)));
+  $$(`[data-open-team-tasks]`).forEach(btn => btn.addEventListener("click", () => { localStorage.setItem("the86_team_tasks_profile", btn.dataset.openTeamTasks); switchView("teamTasks"); }));
   $$(`[data-assign-role]`).forEach(btn => btn.addEventListener("click", () => quickAssignRole(btn.dataset.assignRole)));
-  $$(`[data-generate-strategic-tasks]`).forEach(btn => btn.addEventListener("click", () => generateStrategicTasks(btn.dataset.generateStrategicTasks)));
-  $$(`[data-generate-brand-tasks]`).forEach(btn => btn.addEventListener("click", () => generateBrandTasks(btn.dataset.generateBrandTasks)));
   $$(`[data-weekly-task-detail]`).forEach(btn => btn.addEventListener("click", () => openWeeklyTaskDetail(btn.dataset.weeklyTaskDetail)));
   $$(`[data-calendar-help]`).forEach(btn => btn.addEventListener("click", () => openCalendarHelp(btn.dataset.calendarHelp)));
   $$(`[data-workload-help]`).forEach(btn => btn.addEventListener("click", () => openWorkloadHelp(btn.dataset.workloadHelp)));

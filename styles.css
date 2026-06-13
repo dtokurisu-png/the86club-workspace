@@ -1788,3 +1788,126 @@ html:not([data-theme="dark"]) .field select{background:#ffffff;border-color:#c8c
 .checkbox-option:has(input:checked){border-color:rgba(101,216,135,.55); background:linear-gradient(135deg, rgba(101,216,135,.12), rgba(232,211,145,.06), rgba(255,255,255,.03)); box-shadow:0 0 0 3px rgba(101,216,135,.08)}
 .checkbox-option:hover{border-color:color-mix(in srgb, var(--accent) 60%, var(--border)); box-shadow:0 0 0 3px var(--accent-soft); transform:translateY(-1px)}
 .field-helper{margin:10px 2px 0; color:var(--muted); font-size:13px; line-height:1.45}
+
+/* V4.9.9 - Compact profile workload + team task hub */
+.profile-week-guide-compact {
+  border: 1px solid rgba(232, 211, 141, .22);
+  border-radius: 24px;
+  padding: 18px;
+  margin-top: 18px;
+  background: rgba(255,255,255,.035);
+}
+.profile-compact-head.mini-head { align-items: flex-start; }
+.day-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.day-guide-card,
+.daily-load-card,
+.week-distribution-day {
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
+  padding: 13px;
+  background: linear-gradient(135deg, rgba(255,255,255,.055), rgba(255,255,255,.02));
+}
+.day-guide-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.day-guide-head strong { color: var(--text); letter-spacing: .08em; text-transform: uppercase; }
+.day-guide-head span { color: var(--gold); font-weight: 900; }
+.guide-meter-row { margin-top: 9px; }
+.guide-meter-row small { display: block; color: var(--muted); margin-bottom: 5px; }
+.completion-bar i { background: linear-gradient(90deg, rgba(82, 210, 132, .95), rgba(159, 238, 181, .9)); }
+.team-task-hub { padding: 22px; }
+.team-task-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.team-task-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.team-task-actions select {
+  min-width: 220px;
+  padding: 13px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(232, 211, 141, .25);
+  background: rgba(255,255,255,.06);
+  color: var(--text);
+  font-weight: 800;
+}
+.task-hub-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+.task-hub-summary > div {
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 18px;
+  padding: 13px;
+  background: rgba(0,0,0,.16);
+}
+.task-hub-summary span { display: block; color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 900; }
+.task-hub-summary strong { display: block; margin-top: 5px; color: var(--text); }
+.daily-load-card { margin: 16px 0; }
+.daily-task-list { display: grid; gap: 12px; margin-top: 16px; }
+.daily-task-card {
+  border: 1px solid rgba(232, 211, 141, .18);
+  border-radius: 20px;
+  padding: 16px;
+  background: rgba(255,255,255,.035);
+}
+.daily-task-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+.daily-task-head h4 { margin: 8px 0 0; font-size: 1.1rem; }
+.daily-task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.daily-task-meta span {
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: var(--muted);
+  font-weight: 800;
+  font-size: .82rem;
+}
+.big-empty { padding: 24px; text-align: center; }
+.left-actions { justify-content: flex-start; margin-top: 16px; }
+.week-distribution-modal { display: grid; gap: 12px; }
+.distribution-task-list { display: grid; gap: 8px; margin-top: 12px; }
+.distribution-task-list button {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(0,0,0,.18);
+  border-radius: 14px;
+  padding: 10px 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+.distribution-task-list button span { display: block; color: var(--muted); margin-top: 3px; }
+@media (max-width: 760px) {
+  .team-task-top { flex-direction: column; }
+  .team-task-actions { width: 100%; justify-content: stretch; }
+  .team-task-actions select, .team-task-actions button { width: 100%; }
+}
