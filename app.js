@@ -915,8 +915,47 @@ function teamTasksForDay(profileId, dayKey = todayKey()) {
   return getProfileWeeklyTasks(profileId).filter(t => (t.assignedDay || "monday") === dayKey);
 }
 
+
+function taskWorkTarget(task = {}, bank = null) {
+  const taskType = String(task.taskType || bank?.taskType || "").toLowerCase();
+  const taskId = String(task.roleTaskId || task.brandTaskId || task.strategicTaskId || bank?.id || "").toLowerCase();
+  const text = `${task.title || ""} ${task.description || ""} ${taskType} ${taskId}`.toLowerCase();
+  if (/product|garment|prenda|promise|diseño|design/.test(text)) return { view: "products", label: "Ir a Productos", section: "Productos y colecciones", reason: "Esta tarea necesita registrar o revisar prendas, colecciones, frases, promesa y datos de producto." };
+  if (/shopify|conversion|auditor/.test(text)) return { view: "audit", label: "Ir a auditoría Shopify", section: "Shopify / auditoría", reason: "Esta tarea necesita revisar la tienda, página de producto, confianza, mobile y fricciones de compra." };
+  if (/commercial|tracción|traccion|sales|venta|ventas/.test(text)) return { view: "commercial", label: "Ir a Ventas y datos", section: "Ventas y datos", reason: "Esta tarea necesita registrar o revisar ventas, tráfico, señal comercial y producto con intención." };
+  if (/finance|financ|investment|inversión|inversion|ads|gasto|resultado/.test(text)) return { view: "commercial", label: "Ir a Finanzas / ventas", section: "Ventas y datos", reason: "Esta tarea necesita comparar inversión, ads, ventas y señales económicas del negocio." };
+  if (/campaign|promoci|marketing|mensaje/.test(text)) return { view: "promotion", label: "Ir a Plan promoción", section: "Plan promoción", reason: "Esta tarea necesita preparar mensaje, canal, campaña o revisión de marketing." };
+  if (/decision|decisión|decision/.test(text)) return { view: "decisions", label: "Ir a Decisiones", section: "Registro de decisiones", reason: "Esta tarea necesita guardar una decisión, evidencia, alternativa descartada y efecto esperado." };
+  if (/operation|operativ|archivo|file|drive/.test(text)) return { view: "files", label: "Ir a Archivos Drive", section: "Archivos y recursos", reason: "Esta tarea necesita ordenar evidencia, archivos, enlaces o continuidad operativa." };
+  if (/brand|marca|coherencia|tono|frases/.test(text)) return { view: "products", label: "Ir a Productos / marca", section: "Productos y colecciones", reason: "Esta tarea conecta el formulario de marca con prendas, frases, promesa y coherencia de producto." };
+  return { view: "stages", label: "Ir a Etapas", section: "Etapas", reason: "Esta tarea empuja avance del proceso general y debe dejar evidencia para el cierre semanal." };
+}
+
+function navigateTaskTarget(taskId) {
+  const task = (cache.profileWeeklyTasks || []).find(t => t.id === taskId);
+  if (!task) return;
+  const bank = getRoleBankTask(task);
+  const target = taskWorkTarget(task, bank);
+  localStorage.setItem("the86_last_task_route", JSON.stringify({ taskId, view: target.view, at: Date.now() }));
+  switchView(target.view);
+  setTimeout(() => {
+    openInfoModal({
+      eyebrow: "Ruta de tarea",
+      title: target.section,
+      html: `<div class="learning-stack"><div class="learning-box"><span class="eyebrow">Tarea activa</span><p>${escapeHtml(task.title || "Tarea")}</p></div><div class="learning-box"><span class="eyebrow">Qué hacer aquí</span><p>${escapeHtml(target.reason)}</p></div><div class="learning-box"><span class="eyebrow">Regla de sistema</span><p>Cuando guardes datos en esta sección, el cierre semanal y las etapas podrán usar esa evidencia para medir avance real. Esta versión deja la ruta conectada; los formularios específicos por tarea se irán integrando por rol.</p></div></div>`
+    });
+  }, 120);
+}
+
+function taskStageLinkLabel(task = {}, bank = null) {
+  const target = taskWorkTarget(task, bank);
+  return `Conecta con ${target.section}`;
+}
+
 function renderDailyTaskCard(task) {
   const roleData = roleTaskStatusData(task);
+  const bank = getRoleBankTask(task);
+  const target = taskWorkTarget(task, bank);
   return `<article class="daily-task-card ${task.status === "completed" ? "task-completed" : "task-pending"} ${roleData.className}">
     <div class="daily-task-head">
       <div><span class="role-source-badge ${roleData.className}">${escapeHtml(roleData.label)}</span><h4>${escapeHtml(task.title || "Tarea sin título")}</h4></div>
@@ -931,6 +970,7 @@ function renderDailyTaskCard(task) {
     <div class="small-actions compact-actions">
       <button class="soft-btn" data-weekly-task-detail="${task.id}">Ver detalle</button>
       <button class="primary-btn task-start-btn" data-start-weekly-task="${task.id}">Iniciar tarea</button>
+      <button class="soft-btn" data-task-route="${task.id}">${escapeHtml(target.label)}</button>
       <button class="soft-btn" data-move-weekly-task="${task.id}">Mover</button>
       <button class="soft-btn" data-toggle-weekly-task="${task.id}">${task.status === "completed" ? "Reabrir" : "Completar"}</button>
     </div>
@@ -987,6 +1027,7 @@ function renderTeamTasks() {
   $$(`[data-open-week-distribution]`).forEach(btn => btn.addEventListener("click", () => openWeekDistribution(btn.dataset.openWeekDistribution)));
   $$(`[data-weekly-task-detail]`).forEach(btn => btn.addEventListener("click", () => openWeeklyTaskDetail(btn.dataset.weeklyTaskDetail)));
   $$(`[data-start-weekly-task]`).forEach(btn => btn.addEventListener("click", () => openTaskExecution(btn.dataset.startWeeklyTask)));
+  $$(`[data-task-route]`).forEach(btn => btn.addEventListener("click", () => navigateTaskTarget(btn.dataset.taskRoute)));
   $$(`[data-move-weekly-task]`).forEach(btn => btn.addEventListener("click", () => moveWeeklyTask(btn.dataset.moveWeeklyTask)));
   $$(`[data-toggle-weekly-task]`).forEach(btn => btn.addEventListener("click", () => toggleWeeklyTask(btn.dataset.toggleWeeklyTask)));
 }
@@ -1039,6 +1080,7 @@ function openWeekDistribution(profileId) {
     </div>`
   });
   $$(`[data-weekly-task-detail]`).forEach(btn => btn.addEventListener("click", () => openWeeklyTaskDetail(btn.dataset.weeklyTaskDetail)));
+  $$(`[data-task-route]`).forEach(btn => btn.addEventListener("click", () => navigateTaskTarget(btn.dataset.taskRoute)));
 }
 
 const AUTO_ROLE_TASK_SYNCING = new Set();
@@ -1059,6 +1101,8 @@ async function autoEnsureRoleTasksForProfile(profileId) {
 function weeklyTaskHtml(task) {
   const statusClass = task.status === "completed" ? "task-completed" : "task-pending";
   const roleData = roleTaskStatusData(task);
+  const bank = getRoleBankTask(task);
+  const target = taskWorkTarget(task, bank);
   const isRoleTask = task.source === "role" || task.roleId || task.roleName;
   return `<div class="weekly-task ${statusClass} ${isRoleTask ? "weekly-task-role" : ""} ${roleData.className}">
     <div class="weekly-task-head">
@@ -1076,6 +1120,7 @@ function weeklyTaskHtml(task) {
     <div class="small-actions compact-actions">
       ${isRoleTask ? `<button class="soft-btn" data-weekly-task-detail="${task.id}">Ver detalle</button>` : ""}
       <button class="primary-btn task-start-btn" data-start-weekly-task="${task.id}">Iniciar tarea</button>
+      <button class="soft-btn" data-task-route="${task.id}">${escapeHtml(target.label)}</button>
       <button class="soft-btn" data-move-weekly-task="${task.id}">Mover</button>
       <button class="soft-btn" data-toggle-weekly-task="${task.id}">${task.status === "completed" ? "Reabrir" : "Completar"}</button>
     </div>
@@ -3195,6 +3240,7 @@ function openTaskExecution(taskId) {
   if (!task) return;
   const bank = getRoleBankTask(task);
   const roleData = roleTaskStatusData(task);
+  const target = taskWorkTarget(task, bank);
   const checklist = taskChecklistItems(task, bank);
   const fields = taskDataFields(task, bank);
   openInfoModal({
@@ -3210,6 +3256,11 @@ function openTaskExecution(taskId) {
         <div class="execution-steps">
           ${checklist.map((item, index) => `<details class="execution-step"><summary><span class="step-number">${index + 1}</span><strong>${escapeHtml(item.title || item)}</strong></summary><p>${escapeHtml(item.detail || "Ejecuta este paso y registra evidencia si aplica.")}</p></details>`).join("")}
         </div>
+      </details>
+      <details class="execution-block" open>
+        <summary>Ruta de trabajo dentro del workspace</summary>
+        <div class="learning-box"><span class="eyebrow">Sección conectada</span><p>${escapeHtml(target.reason)}</p></div>
+        <button class="primary-btn" data-task-route="${task.id}">${escapeHtml(target.label)}</button>
       </details>
       <details class="execution-block">
         <summary>Datos que debes dejar listos</summary>
@@ -3230,6 +3281,7 @@ function openTaskExecution(taskId) {
     </div>`
   });
   $$(`[data-weekly-task-detail]`).forEach(btn => btn.addEventListener("click", () => openWeeklyTaskDetail(btn.dataset.weeklyTaskDetail)));
+  $$(`[data-task-route]`).forEach(btn => btn.addEventListener("click", () => navigateTaskTarget(btn.dataset.taskRoute)));
   $$(`[data-toggle-weekly-task]`).forEach(btn => btn.addEventListener("click", () => toggleWeeklyTask(btn.dataset.toggleWeeklyTask)));
 }
 
@@ -3250,7 +3302,8 @@ function openWeeklyTaskDetail(taskId) {
         <div class="learning-box"><span class="eyebrow">Objetivo</span><p>${escapeHtml(bank?.objective || task.description || "Completar esta tarea con evidencia clara para que el sistema pueda medir avance.")}</p></div>
         <div class="learning-box"><span class="eyebrow">Impacto esperado</span><p>${escapeHtml(task.businessImpact || bank?.businessImpact || "Ayuda a mantener el negocio alineado y evitar trabajo sin dirección.")}</p></div>
         <div class="learning-box"><span class="eyebrow">Evidencia requerida</span><p>${escapeHtml(task.evidenceRequired || bank?.evidenceRequired || "Resultado, link, decisión o nota de cierre.")}</p></div>
-        <div class="learning-box"><span class="eyebrow">Ecosistema futuro</span><p>Usa “Iniciar tarea” para abrir el checklist de ejecución, pasos accionables, datos requeridos y criterio de cierre.</p></div>
+        <div class="learning-box"><span class="eyebrow">Conexión interna</span><p>${escapeHtml(taskStageLinkLabel(task, bank))}. La tarea debe empujar a registrar evidencia en la sección correcta del workspace, no quedarse como palomita vacía.</p></div>
+        <div class="learning-box"><span class="eyebrow">Ecosistema futuro</span><p>Usa “Iniciar tarea” para abrir el checklist de ejecución, pasos accionables, datos requeridos, ruta interna y criterio de cierre.</p></div>
         ${brandTaskExtraDetail(task, bank)}
       </div>
       ${task.notes ? `<h3>Notas guardadas</h3><pre class="task-note-preview">${escapeHtml(task.notes)}</pre>` : ""}
@@ -3591,8 +3644,11 @@ async function toggleWeeklyTask(taskId) {
   const task = (cache.profileWeeklyTasks || []).find(x => x.id === taskId);
   if (!task) return;
   const nextStatus = task.status === "completed" ? "pending" : "completed";
-  await updateDoc(workspaceDoc("profileWeeklyTasks", taskId), { status: nextStatus, updatedAt: serverTimestamp(), updatedBy: currentUser.email, completedAt: nextStatus === "completed" ? serverTimestamp() : null });
-  await logActivity(nextStatus === "completed" ? "complete_weekly_task" : "reopen_weekly_task", "profiles", `${nextStatus === "completed" ? "Completó" : "Reabrió"} tarea semanal: ${task.title}`);
+  const bank = getRoleBankTask(task);
+  const target = taskWorkTarget(task, bank);
+  await updateDoc(workspaceDoc("profileWeeklyTasks", taskId), { status: nextStatus, updatedAt: serverTimestamp(), updatedBy: currentUser.email, completedAt: nextStatus === "completed" ? serverTimestamp() : null, linkedView: target.view, linkedSection: target.section });
+  await logActivity(nextStatus === "completed" ? "complete_weekly_task" : "reopen_weekly_task", "profiles", `${nextStatus === "completed" ? "Completó" : "Reabrió"} tarea semanal: ${task.title} · conecta con ${target.section}`);
+  if (nextStatus === "completed") localStorage.setItem("the86_weekly_execution_changed", "true");
 }
 
 function openProfileImportance(id) {

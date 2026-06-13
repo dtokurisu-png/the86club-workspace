@@ -1,3 +1,3 @@
-# The 86 Club Workspace V4.9.12
+# The 86 Club Workspace V4.9.13
 
-Task execution system and technical strategic tasks.
+Adds task routes to workspace sections and weekly execution bridge notes.
