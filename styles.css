@@ -1982,3 +1982,27 @@ html:not([data-theme="dark"]) .field select{background:#ffffff;border-color:#c8c
   .nav.nav-categorized{max-height:none !important; overflow:visible !important}
   .nav-group:not([data-collapsed="true"]) .nav-group-items{max-height:none !important; overflow:visible !important}
 }
+
+/* V4.9.12 - Task execution system and technical strategic tasks */
+.task-start-btn { border-color: rgba(56, 211, 145, 0.45); background: linear-gradient(135deg, rgba(56,211,145,0.20), rgba(232,211,145,0.12)); color: #dfffe9; }
+body.light .task-start-btn { color: #173428; }
+.task-execution-shell { display: grid; gap: 14px; }
+.execution-block { border: 1px solid rgba(232, 211, 145, 0.18); background: rgba(255,255,255,0.035); border-radius: 18px; padding: 12px 14px; }
+.execution-block summary { cursor: pointer; list-style: none; font-weight: 900; color: var(--cream); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.execution-block summary::-webkit-details-marker { display: none; }
+.execution-block summary::after { content: "▾"; color: var(--gold); transition: transform .18s ease; }
+.execution-block:not([open]) summary::after { transform: rotate(-90deg); }
+.execution-steps { display: grid; gap: 10px; margin-top: 12px; }
+.execution-step { border: 1px solid rgba(255,255,255,0.10); border-radius: 14px; background: rgba(0,0,0,0.16); padding: 10px; }
+.execution-step summary { justify-content: flex-start; }
+.execution-step summary::after { margin-left: auto; }
+.execution-step p { margin: 10px 0 0; color: var(--muted); line-height: 1.55; }
+.step-number { width: 24px; height: 24px; border-radius: 999px; display: inline-grid; place-items: center; background: rgba(56,211,145,0.16); color: #79f0ae; border: 1px solid rgba(56,211,145,0.35); font-size: 12px; font-weight: 950; }
+.data-field-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.data-field-chip { border: 1px solid rgba(56,211,145,0.28); background: rgba(56,211,145,0.08); color: var(--cream); border-radius: 999px; padding: 8px 11px; font-weight: 850; font-size: 12px; }
+.team-task-actions select { min-width: 220px; }
+.daily-task-card .compact-actions { align-items: center; }
+body.light .execution-block { background: rgba(255,255,255,0.68); border-color: rgba(55,38,16,0.14); }
+body.light .execution-block summary { color: var(--ink); }
+body.light .execution-step { background: rgba(255,255,255,0.7); border-color: rgba(55,38,16,0.10); }
+body.light .data-field-chip { color: var(--ink); }

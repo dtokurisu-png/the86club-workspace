@@ -930,6 +930,7 @@ function renderDailyTaskCard(task) {
     </div>
     <div class="small-actions compact-actions">
       <button class="soft-btn" data-weekly-task-detail="${task.id}">Ver detalle</button>
+      <button class="primary-btn task-start-btn" data-start-weekly-task="${task.id}">Iniciar tarea</button>
       <button class="soft-btn" data-move-weekly-task="${task.id}">Mover</button>
       <button class="soft-btn" data-toggle-weekly-task="${task.id}">${task.status === "completed" ? "Reabrir" : "Completar"}</button>
     </div>
@@ -960,7 +961,6 @@ function renderTeamTasks() {
         <div><span class="eyebrow">Tareas a realizar</span><h3>Seleccionar usuario</h3><p>El sistema usa los roles activos del usuario para generar y distribuir tareas en los días recomendados.</p></div>
         <div class="team-task-actions">
           <select id="teamTaskProfileSelect">${profiles.map(p => `<option value="${escapeAttr(p.id)}" ${p.id === profile.id ? "selected" : ""}>${escapeHtml(p.name || "Perfil")}</option>`).join("")}</select>
-          <button class="primary-btn" data-sync-role-tasks="${profile.id}">Preparar tareas según roles activos</button>
         </div>
       </div>
       <div class="task-hub-summary">
@@ -975,7 +975,7 @@ function renderTeamTasks() {
         <div class="guide-meter-row"><small>Completado ${donePercent}%</small><div class="load-bar completion-bar"><i style="width:${donePercent}%"></i></div></div>
       </div>
       <div class="daily-task-list">
-        ${tasksToday.length ? tasksToday.map(renderDailyTaskCard).join("") : `<div class="empty-day big-empty">No hay tareas para hoy. Prepara tareas según roles activos o revisa la distribución semanal.</div>`}
+        ${tasksToday.length ? tasksToday.map(renderDailyTaskCard).join("") : `<div class="empty-day big-empty">No hay tareas para hoy según los roles activos. Si el sistema acaba de generar tareas, revisa la distribución semanal o espera unos segundos a que Firestore sincronice.</div>`}
       </div>
       <div class="modal-actions left-actions"><button class="soft-btn" data-open-week-distribution="${profile.id}">Ver distribución de la semana</button></div>
     </section>`;
@@ -983,14 +983,15 @@ function renderTeamTasks() {
     localStorage.setItem("the86_team_tasks_profile", e.target.value);
     renderTeamTasks();
   });
-  $$(`[data-sync-role-tasks]`).forEach(btn => btn.addEventListener("click", () => syncRoleTasksForProfile(btn.dataset.syncRoleTasks)));
+  setTimeout(() => autoEnsureRoleTasksForProfile(profile.id), 0);
   $$(`[data-open-week-distribution]`).forEach(btn => btn.addEventListener("click", () => openWeekDistribution(btn.dataset.openWeekDistribution)));
   $$(`[data-weekly-task-detail]`).forEach(btn => btn.addEventListener("click", () => openWeeklyTaskDetail(btn.dataset.weeklyTaskDetail)));
+  $$(`[data-start-weekly-task]`).forEach(btn => btn.addEventListener("click", () => openTaskExecution(btn.dataset.startWeeklyTask)));
   $$(`[data-move-weekly-task]`).forEach(btn => btn.addEventListener("click", () => moveWeeklyTask(btn.dataset.moveWeeklyTask)));
   $$(`[data-toggle-weekly-task]`).forEach(btn => btn.addEventListener("click", () => toggleWeeklyTask(btn.dataset.toggleWeeklyTask)));
 }
 
-async function syncRoleTasksForProfile(profileId) {
+async function syncRoleTasksForProfile(profileId, options = {}) {
   const profile = (cache.profiles || []).find(p => p.id === profileId);
   if (!profile) return;
   const currentTasks = getProfileWeeklyTasks(profile.id);
@@ -1008,12 +1009,12 @@ async function syncRoleTasksForProfile(profileId) {
     });
   }
   if (!planned.length) {
-    openInfoModal({ eyebrow: "Sin tareas nuevas", title: "No hay nuevas tareas de rol", html: `<p>Este usuario ya tiene las tareas base de sus roles o todavía no hay suficiente señal para asignar más sin crear ruido.</p>` });
+    if (!options.silent) openInfoModal({ eyebrow: "Sin tareas nuevas", title: "No hay nuevas tareas de rol", html: `<p>Este usuario ya tiene las tareas base de sus roles o todavía no hay suficiente señal para asignar más sin crear ruido.</p>` });
     return;
   }
   for (const task of planned) await addDoc(workspaceCol("profileWeeklyTasks"), { ...task, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
   await logActivity("sync_role_tasks", "profileWeeklyTasks", `Actualizó ${planned.length} tareas según roles para ${profile.name || "perfil"}`);
-  openInfoModal({ eyebrow: "Tareas actualizadas", title: `${planned.length} tareas agregadas`, html: `<p>Las tareas se distribuyeron según roles activos, disponibilidad, días ligeros/protegidos y carga diaria.</p>` });
+  if (!options.silent) openInfoModal({ eyebrow: "Tareas actualizadas", title: `${planned.length} tareas agregadas`, html: `<p>Las tareas se distribuyeron según roles activos, disponibilidad, días ligeros/protegidos y carga diaria.</p>` });
 }
 
 function openWeekDistribution(profileId) {
@@ -1040,6 +1041,21 @@ function openWeekDistribution(profileId) {
   $$(`[data-weekly-task-detail]`).forEach(btn => btn.addEventListener("click", () => openWeeklyTaskDetail(btn.dataset.weeklyTaskDetail)));
 }
 
+const AUTO_ROLE_TASK_SYNCING = new Set();
+async function autoEnsureRoleTasksForProfile(profileId) {
+  const profile = (cache.profiles || []).find(p => p.id === profileId);
+  if (!profile || AUTO_ROLE_TASK_SYNCING.has(profileId)) return;
+  if (!profileHasStrategicRole(profile) && !profileHasBrandRole(profile)) return;
+  const existing = getProfileWeeklyTasks(profile.id).filter(t => t.source === "role" || t.roleId || t.roleName);
+  if (existing.length) return;
+  AUTO_ROLE_TASK_SYNCING.add(profileId);
+  try {
+    await syncRoleTasksForProfile(profileId, { silent: true });
+  } finally {
+    setTimeout(() => AUTO_ROLE_TASK_SYNCING.delete(profileId), 1500);
+  }
+}
+
 function weeklyTaskHtml(task) {
   const statusClass = task.status === "completed" ? "task-completed" : "task-pending";
   const roleData = roleTaskStatusData(task);
@@ -1058,7 +1074,8 @@ function weeklyTaskHtml(task) {
       <span>${task.source || "manual"}</span>
     </div>
     <div class="small-actions compact-actions">
-      ${isRoleTask ? `<button class="soft-btn" data-weekly-task-detail="${task.id}">Ver rol</button>` : ""}
+      ${isRoleTask ? `<button class="soft-btn" data-weekly-task-detail="${task.id}">Ver detalle</button>` : ""}
+      <button class="primary-btn task-start-btn" data-start-weekly-task="${task.id}">Iniciar tarea</button>
       <button class="soft-btn" data-move-weekly-task="${task.id}">Mover</button>
       <button class="soft-btn" data-toggle-weekly-task="${task.id}">${task.status === "completed" ? "Reabrir" : "Completar"}</button>
     </div>
@@ -1543,184 +1560,185 @@ const STRATEGIC_ROLE_ID = "strategic_direction";
 const STRATEGIC_ROLE_NAME = "Dirección estratégica del negocio";
 const STRATEGIC_ROLE_TASK_BANK = [
   {
-    id: "define_weekly_focus",
-    title: "Definir foco semanal del negocio",
-    description: "Elegir la prioridad central de la semana para evitar dispersión entre diseño, tienda, marketing, ventas y operación.",
-    objective: "Convertir la energía de la semana en una dirección concreta.",
+    id: "strategic_area_balance_audit",
+    title: "Auditoría semanal de balance por área",
+    description: "Medir en qué áreas se invirtió tiempo esta semana y comparar ese esfuerzo contra señales comerciales, operativas y de marca.",
+    objective: "Detectar si el negocio está usando energía en el área correcta o si una parte crítica quedó descuidada.",
     estimatedMinutes: 45,
     intensity: "medium",
     frequency: "weekly",
-    taskType: "focus",
-    businessImpact: "Evita trabajo disperso y facilita que el cierre semanal tenga una intención clara.",
-    activationTags: ["base", "start_week", "no_focus"],
-    suggestedDayMoment: "start",
+    taskType: "audit",
+    businessImpact: "Mejora la asignación de esfuerzo entre diseño, Shopify, marketing, ventas, finanzas y operación.",
+    activationTags: ["base", "imbalance", "workload_high", "design_excess"],
+    suggestedDayMoment: "preclose",
     canUseLightDay: false,
     canUseProtectedDay: false,
-    evidenceRequired: "Foco semanal escrito y razón de prioridad.",
-    priorityBase: 100,
-    ecosystemTemplateId: "ecosystem_strategic_weekly_focus"
+    evidenceRequired: "Tabla breve con áreas revisadas, señal observada, riesgo y corrección recomendada.",
+    priorityBase: 105,
+    ecosystemTemplateId: "ecosystem_strategic_area_balance_audit",
+    checklist: [
+      { title: "Registrar áreas trabajadas", detail: "Anota qué áreas tuvieron trabajo real esta semana: diseño, Shopify, marketing, ventas, finanzas, operación, archivos, dirección, marca. No evalúes todavía; primero levanta el mapa." },
+      { title: "Comparar esfuerzo contra resultado", detail: "Para cada área, escribe qué produjo: venta, publicación, mejora de tienda, producto listo, decisión tomada, dato registrado o estabilidad operativa." },
+      { title: "Detectar área excedida", detail: "Marca el área que recibió demasiado tiempo en comparación con su resultado. Ejemplo técnico: muchas horas de diseño sin producto listo, o muchas pruebas Shopify sin mejora visible de conversión." },
+      { title: "Detectar área descuidada", detail: "Marca el área que no recibió atención suficiente aunque afecta venta o estabilidad. Ejemplo: no revisar métricas, no preparar promoción, no registrar costos." },
+      { title: "Definir corrección semanal", detail: "Escribe una corrección concreta para la próxima semana: aumentar, reducir, pausar, delegar o cerrar una línea de trabajo. Debe ser una acción, no una opinión." }
+    ],
+    dataFields: ["Área excedida", "Área descuidada", "Dato que lo demuestra", "Corrección recomendada"]
   },
   {
-    id: "review_business_balance",
-    title: "Revisar equilibrio general del negocio",
-    description: "Mirar si The 86 Club se está cargando demasiado hacia diseño, Shopify, ads, operación o ideas sin venta.",
-    objective: "Detectar áreas excedidas o descuidadas antes de seguir trabajando por inercia.",
+    id: "strategic_weekly_priority_definition",
+    title: "Definición de prioridad estratégica semanal",
+    description: "Elegir una prioridad principal de negocio usando datos disponibles, capacidad real y estado actual del proyecto.",
+    objective: "Cerrar la semana con una dirección clara para la siguiente, no con una lista infinita de intenciones.",
+    estimatedMinutes: 35,
+    intensity: "medium",
+    frequency: "weekly",
+    taskType: "priority",
+    businessImpact: "Reduce dispersión y convierte diagnóstico en ejecución realista.",
+    activationTags: ["base", "start_week", "planning"],
+    suggestedDayMoment: "preclose",
+    canUseLightDay: true,
+    canUseProtectedDay: false,
+    evidenceRequired: "Prioridad semanal escrita con motivo, área responsable y resultado esperado.",
+    priorityBase: 100,
+    ecosystemTemplateId: "ecosystem_strategic_weekly_priority",
+    checklist: [
+      { title: "Leer estado de ventas y tráfico", detail: "Revisa si hubo ventas, sesiones, conversiones o señales de intención. Si no hay datos, marca el vacío como dato útil: falta medición o falta tráfico." },
+      { title: "Leer producción y marca", detail: "Revisa si hubo diseños, productos, textos, campañas o cambios de tienda. Evalúa si eso empuja venta, confianza o coherencia." },
+      { title: "Leer capacidad real", detail: "Revisa disponibilidad, días protegidos, carga de trabajo e intensidad. La prioridad no debe exigir una semana que el equipo no puede sostener." },
+      { title: "Elegir una prioridad dominante", detail: "Selecciona una sola prioridad principal: vender, ordenar tienda, cerrar productos, medir, crear campaña, corregir marca, limpiar operación o registrar datos." },
+      { title: "Definir resultado medible", detail: "Escribe qué debe existir al final de la próxima semana para decir que la prioridad se cumplió." }
+    ],
+    dataFields: ["Prioridad elegida", "Motivo", "Resultado medible", "Área responsable"]
+  },
+  {
+    id: "strategic_commercial_signal_review",
+    title: "Revisión de tracción comercial",
+    description: "Revisar señales de venta, intención, visitas, productos vistos, campañas y respuesta del mercado para decidir si el negocio está generando movimiento real.",
+    objective: "Separar actividad interna de tracción comercial externa.",
+    estimatedMinutes: 40,
+    intensity: "medium",
+    frequency: "weekly",
+    taskType: "commercial_review",
+    businessImpact: "Ayuda a decidir si la semana necesita promoción, mejora de página, ajuste de producto o más medición.",
+    activationTags: ["has_sales", "has_ads", "has_data", "has_products"],
+    suggestedDayMoment: "preclose",
+    canUseLightDay: false,
+    canUseProtectedDay: false,
+    evidenceRequired: "Resumen de señales comerciales: ventas, visitas, campañas, producto con interés y decisión derivada.",
+    priorityBase: 90,
+    ecosystemTemplateId: "ecosystem_strategic_commercial_signal",
+    checklist: [
+      { title: "Registrar ventas y pedidos", detail: "Anota ventas, órdenes y ticket promedio si existen. Si no hubo ventas, registra cero; el cero también orienta decisiones." },
+      { title: "Registrar tráfico o exposición", detail: "Anota sesiones, visitas, alcance, clicks o señales disponibles. Sin tráfico, no se puede juzgar producto con justicia." },
+      { title: "Relacionar producto con señal", detail: "Identifica qué producto, diseño o colección recibió más atención, aunque no vendiera. Esto ayuda a separar interés de conversión." },
+      { title: "Detectar bloqueo principal", detail: "Clasifica el bloqueo: falta tráfico, falta confianza, promesa débil, producto poco claro, precio/margen, página confusa o campaña sin dirección." },
+      { title: "Escribir decisión comercial", detail: "Define la próxima acción comercial: impulsar un producto, mejorar página, revisar precio, crear campaña, recolectar datos o pausar." }
+    ],
+    dataFields: ["Ventas", "Tráfico/señal", "Producto con interés", "Bloqueo principal", "Decisión comercial"]
+  },
+  {
+    id: "strategic_shopify_conversion_review",
+    title: "Revisión técnica de conversión Shopify",
+    description: "Revisar si la tienda y las páginas de producto están listas para convertir tráfico en confianza y compra.",
+    objective: "Detectar fricciones concretas en página, producto, mensaje, mockups, precio, botón y flujo móvil.",
+    estimatedMinutes: 45,
+    intensity: "medium",
+    frequency: "weekly",
+    taskType: "shopify_review",
+    businessImpact: "Evita enviar tráfico a una página que todavía no explica, convence o guía la compra.",
+    activationTags: ["has_products", "has_audit", "shopify_change"],
+    suggestedDayMoment: "middle",
+    canUseLightDay: false,
+    canUseProtectedDay: false,
+    evidenceRequired: "Checklist Shopify con fricción detectada y corrección priorizada.",
+    priorityBase: 82,
+    ecosystemTemplateId: "ecosystem_strategic_shopify_conversion",
+    checklist: [
+      { title: "Revisar primera impresión móvil", detail: "Abre la tienda en móvil. Verifica si en 5 segundos se entiende qué vende The 86 Club, para quién es y por qué importa." },
+      { title: "Revisar página de producto", detail: "Comprueba título, mockups, descripción, precio, variantes, guía de talla y botón. Busca fricción concreta, no opiniones vagas." },
+      { title: "Revisar promesa de compra", detail: "Confirma si el producto vende identidad de cocina/servicio o solo muestra una gráfica. Si la razón de compra no está clara, marca riesgo." },
+      { title: "Revisar confianza", detail: "Busca señales de confianza: calidad visual, coherencia, políticas, tracking, contacto, branding y limpieza. Registra lo que falte." },
+      { title: "Priorizar una corrección", detail: "No intentes arreglar toda la tienda. Elige la fricción que más puede afectar conversión esta semana." }
+    ],
+    dataFields: ["Página revisada", "Fricción principal", "Riesgo", "Corrección priorizada"]
+  },
+  {
+    id: "strategic_finance_efficiency_review",
+    title: "Revisión de inversión vs resultado",
+    description: "Comparar inversión, gasto publicitario, costos registrados y ventas para saber si el negocio está aprendiendo o solo consumiendo recursos.",
+    objective: "Mantener control financiero básico antes de aumentar producción o promoción.",
+    estimatedMinutes: 35,
+    intensity: "medium",
+    frequency: "weekly",
+    taskType: "finance_review",
+    businessImpact: "Protege capital, margen y decisiones de crecimiento.",
+    activationTags: ["has_investment", "has_ads", "has_sales", "has_data"],
+    suggestedDayMoment: "preclose",
+    canUseLightDay: true,
+    canUseProtectedDay: false,
+    evidenceRequired: "Resumen de inversión, ads, ventas, balance simple y recomendación financiera.",
+    priorityBase: 78,
+    ecosystemTemplateId: "ecosystem_strategic_finance_efficiency",
+    checklist: [
+      { title: "Registrar inversión de la semana", detail: "Anota costos reales: muestras, herramientas, diseños, Shopify, dominio, ads, mockups, apps, envío o cualquier gasto operativo." },
+      { title: "Registrar ventas e ingresos", detail: "Anota ventas netas o brutas disponibles. Si no hay ventas, registra cero para que el sistema no infle lectura positiva." },
+      { title: "Comparar ads contra señal", detail: "Si hubo gasto en anuncios, revisa clicks, visitas, costo por resultado y si produjo aprendizaje medible." },
+      { title: "Detectar fuga o inversión útil", detail: "Clasifica el gasto: inversión útil, prueba necesaria, fuga por falta de datos, o gasto que debe pausarse." },
+      { title: "Definir recomendación financiera", detail: "Escribe si la próxima semana conviene invertir, contener gasto, medir mejor, o mover presupuesto a otra área." }
+    ],
+    dataFields: ["Inversión", "Ventas", "Ads", "Lectura", "Recomendación financiera"]
+  },
+  {
+    id: "strategic_operational_risk_review",
+    title: "Revisión de riesgo operativo",
+    description: "Comprobar si archivos, decisiones, responsables, datos y cierres están ordenados para que el negocio no dependa de memoria o improvisación.",
+    objective: "Detectar puntos donde el sistema puede romper continuidad: archivos perdidos, decisiones no registradas, tareas sin evidencia o roles confusos.",
     estimatedMinutes: 30,
     intensity: "medium",
     frequency: "weekly",
-    taskType: "balance",
-    businessImpact: "Ayuda a decidir si toca vender, medir, producir, ordenar o pausar.",
-    activationTags: ["base", "imbalance", "design_excess", "workload_high"],
-    suggestedDayMoment: "start",
-    canUseLightDay: false,
-    canUseProtectedDay: false,
-    evidenceRequired: "Resumen de áreas fuertes, débiles y acción correctiva.",
-    priorityBase: 95,
-    ecosystemTemplateId: "ecosystem_strategic_balance_review"
-  },
-  {
-    id: "review_pending_decisions",
-    title: "Revisar decisiones pendientes",
-    description: "Cerrar, pausar o aclarar decisiones que están bloqueando avance o repitiendo conversaciones.",
-    objective: "Reducir ruido mental y dejar registro de decisiones importantes.",
-    estimatedMinutes: 25,
-    intensity: "low",
-    frequency: "weekly",
-    taskType: "decision",
-    businessImpact: "Evita que el equipo gaste energía en dudas repetidas.",
-    activationTags: ["base", "decisions_pending"],
-    suggestedDayMoment: "start",
-    canUseLightDay: true,
-    canUseProtectedDay: false,
-    evidenceRequired: "Decisión registrada, estado o siguiente paso.",
-    priorityBase: 80,
-    ecosystemTemplateId: "ecosystem_strategic_decision_review"
-  },
-  {
-    id: "review_base_metrics",
-    title: "Revisar métricas base del negocio",
-    description: "Leer ventas, inversión, gasto publicitario, tareas completadas y datos comerciales disponibles.",
-    objective: "Decidir con datos en vez de sensación.",
-    estimatedMinutes: 45,
-    intensity: "medium",
-    frequency: "weekly",
-    taskType: "metrics",
-    businessImpact: "Conecta trabajo semanal con ventas, costos, campañas y progreso real.",
-    activationTags: ["has_sales", "has_ads", "has_investment", "has_data"],
-    suggestedDayMoment: "preclose",
-    canUseLightDay: false,
-    canUseProtectedDay: false,
-    evidenceRequired: "Notas de métricas revisadas y decisión derivada.",
-    priorityBase: 75,
-    ecosystemTemplateId: "ecosystem_strategic_metrics_review"
-  },
-  {
-    id: "detect_area_excess_or_neglect",
-    title: "Detectar exceso o descuido por área",
-    description: "Comparar trabajo creativo, marketing, Shopify, finanzas, ventas, operación y datos para saber si una parte está dominando demasiado.",
-    objective: "Evitar que el negocio avance solo en lo cómodo y descuide lo que vende.",
-    estimatedMinutes: 35,
-    intensity: "medium",
-    frequency: "weekly",
-    taskType: "diagnosis",
-    businessImpact: "Permite corregir semanas con demasiado diseño y poca promoción, o demasiado gasto y poca lectura.",
-    activationTags: ["imbalance", "design_excess", "marketing_low", "sales_low"],
-    suggestedDayMoment: "preclose",
-    canUseLightDay: false,
-    canUseProtectedDay: false,
-    evidenceRequired: "Área excedida, área descuidada y ajuste recomendado.",
-    priorityBase: 70,
-    ecosystemTemplateId: "ecosystem_strategic_area_diagnosis"
-  },
-  {
-    id: "prioritize_week_actions",
-    title: "Priorizar acciones de la semana",
-    description: "Elegir pocas acciones concretas que se harán primero según impacto, carga y disponibilidad.",
-    objective: "Convertir revisión estratégica en ejecución realista.",
-    estimatedMinutes: 35,
-    intensity: "medium",
-    frequency: "weekly",
-    taskType: "prioritization",
-    businessImpact: "Reduce listas infinitas y enfoca la energía en lo que más empuja el negocio.",
-    activationTags: ["base", "many_tasks", "planning"],
-    suggestedDayMoment: "start",
-    canUseLightDay: false,
-    canUseProtectedDay: false,
-    evidenceRequired: "Lista corta de prioridades y tareas pausadas.",
-    priorityBase: 85,
-    ecosystemTemplateId: "ecosystem_strategic_prioritize_actions"
-  },
-  {
-    id: "reduce_low_impact_work",
-    title: "Pausar o reducir tareas de bajo impacto",
-    description: "Detectar tareas que consumen tiempo pero no empujan venta, aprendizaje o estabilidad del negocio.",
-    objective: "Bajar carga sin frenar lo esencial.",
-    estimatedMinutes: 20,
-    intensity: "low",
-    frequency: "as_needed",
-    taskType: "scope_control",
-    businessImpact: "Protege salud, tiempo y foco cuando la semana está cargada.",
-    activationTags: ["workload_high", "saturation", "too_many_tasks"],
-    suggestedDayMoment: "any",
-    canUseLightDay: true,
-    canUseProtectedDay: false,
-    evidenceRequired: "Tarea pausada/reducida y motivo.",
-    priorityBase: 60,
-    ecosystemTemplateId: "ecosystem_strategic_reduce_scope"
-  },
-  {
-    id: "record_strategic_decision",
-    title: "Registrar decisión estratégica importante",
-    description: "Guardar una decisión relevante, su motivo, alternativa descartada e impacto esperado.",
-    objective: "Crear memoria del negocio para no decidir dos veces lo mismo.",
-    estimatedMinutes: 15,
-    intensity: "low",
-    frequency: "as_needed",
-    taskType: "decision_log",
-    businessImpact: "Aumenta claridad, continuidad y capacidad de revisar por qué se hizo algo.",
-    activationTags: ["decision_made", "manual"],
-    suggestedDayMoment: "any",
-    canUseLightDay: true,
-    canUseProtectedDay: false,
-    evidenceRequired: "Decisión registrada en el workspace.",
-    priorityBase: 50,
-    ecosystemTemplateId: "ecosystem_strategic_record_decision"
-  },
-  {
-    id: "quick_direction_check",
-    title: "Chequeo rápido de dirección",
-    description: "Confirmar que lo que se está haciendo todavía respeta el foco semanal y la carga sana.",
-    objective: "Corregir desvíos sin crear una reunión pesada.",
-    estimatedMinutes: 10,
-    intensity: "low",
-    frequency: "1-2x_week",
-    taskType: "check",
-    businessImpact: "Evita que una semana se vaya torciendo poco a poco sin que nadie lo note.",
-    activationTags: ["midweek", "light_check"],
+    taskType: "operations_review",
+    businessImpact: "Mejora estabilidad interna y evita repetir trabajo.",
+    activationTags: ["base", "decisions_pending", "operation", "files"],
     suggestedDayMoment: "middle",
     canUseLightDay: true,
     canUseProtectedDay: false,
-    evidenceRequired: "Nota breve de alineación o ajuste.",
-    priorityBase: 45,
-    ecosystemTemplateId: "ecosystem_strategic_quick_check"
+    evidenceRequired: "Riesgo operativo identificado, severidad y acción de control.",
+    priorityBase: 72,
+    ecosystemTemplateId: "ecosystem_strategic_operational_risk",
+    checklist: [
+      { title: "Revisar archivos críticos", detail: "Confirma que diseños, mockups, documentos, links de Drive y versiones estén registrados o ubicables." },
+      { title: "Revisar decisiones abiertas", detail: "Busca decisiones sin estado claro. Una decisión abierta demasiado tiempo bloquea avance aunque no parezca urgente." },
+      { title: "Revisar responsables", detail: "Comprueba si las tareas tienen usuario, rol o evidencia asignada. Si nadie responde por algo, no es tarea; es ruido." },
+      { title: "Detectar riesgo principal", detail: "Elige el riesgo que más puede romper continuidad esta semana: archivo, dato, decisión, rol, página, producto o comunicación." },
+      { title: "Definir control", detail: "Escribe una acción de control: registrar, mover, cerrar, asignar, archivar, documentar o limpiar." }
+    ],
+    dataFields: ["Riesgo", "Severidad", "Área", "Control requerido"]
   },
   {
-    id: "prepare_preclose_recommendation",
-    title: "Preparar recomendación para el pre-cierre",
-    description: "Convertir lo aprendido en una recomendación concreta para cerrar la semana y preparar la siguiente.",
-    objective: "Llegar al cierre con lectura, no con improvisación.",
-    estimatedMinutes: 25,
-    intensity: "medium",
-    frequency: "weekly",
-    taskType: "preclose",
-    businessImpact: "Mejora la calidad del cierre semanal y la planificación futura.",
-    activationTags: ["preclose", "close_near"],
-    suggestedDayMoment: "preclose",
+    id: "strategic_decision_log_review",
+    title: "Registro de decisión crítica del negocio",
+    description: "Guardar una decisión relevante con motivo, alternativa descartada, evidencia y efecto esperado.",
+    objective: "Crear memoria estratégica para que el equipo no decida dos veces lo mismo.",
+    estimatedMinutes: 20,
+    intensity: "low",
+    frequency: "as_needed",
+    taskType: "decision_log",
+    businessImpact: "Aumenta continuidad y calidad de decisiones futuras.",
+    activationTags: ["decision_made", "decisions_pending", "manual"],
+    suggestedDayMoment: "any",
     canUseLightDay: true,
     canUseProtectedDay: false,
-    evidenceRequired: "Recomendación escrita para la próxima semana.",
-    priorityBase: 65,
-    ecosystemTemplateId: "ecosystem_strategic_preclose_recommendation"
+    evidenceRequired: "Decisión registrada con contexto, motivo y siguiente efecto esperado.",
+    priorityBase: 60,
+    ecosystemTemplateId: "ecosystem_strategic_decision_log",
+    checklist: [
+      { title: "Escribir decisión", detail: "Registra la decisión en una frase clara. Ejemplo: impulsar un producto, pausar una línea, cambiar prioridad, ajustar página o sostener presupuesto." },
+      { title: "Registrar evidencia", detail: "Anota qué dato, observación o problema justifica la decisión." },
+      { title: "Registrar alternativa descartada", detail: "Escribe qué opción no se hará y por qué. Esto evita volver al mismo debate la próxima semana." },
+      { title: "Definir efecto esperado", detail: "Indica qué debería cambiar si la decisión fue correcta: ventas, claridad, carga, orden, velocidad o confianza." }
+    ],
+    dataFields: ["Decisión", "Evidencia", "Alternativa descartada", "Efecto esperado"]
   }
 ];
 
@@ -2102,6 +2120,8 @@ function buildBrandWeeklyTask(profile, task, assignedDay) {
     businessImpact: task.businessImpact,
     activationConditions: (task.activationTags || []).join(", "),
     evidenceRequired: task.evidenceRequired,
+    checklist: task.checklist || [],
+    dataFields: task.dataFields || [],
     taskEcosystemEnabled: true,
     ecosystemTemplateId: task.ecosystemTemplateId,
     createdBy: currentUser?.email || "system"
@@ -2300,6 +2320,8 @@ function buildStrategicWeeklyTask(profile, task, assignedDay) {
     taskType: task.taskType,
     businessImpact: task.businessImpact,
     evidenceRequired: task.evidenceRequired,
+    checklist: task.checklist || [],
+    dataFields: task.dataFields || [],
     taskEcosystemEnabled: true,
     ecosystemTemplateId: task.ecosystemTemplateId,
     createdBy: currentUser?.email || "system"
@@ -3133,6 +3155,84 @@ function dayLabel(key) {
 }
 
 
+
+function taskChecklistItems(task = {}, bank = null) {
+  if (Array.isArray(task.checklist) && task.checklist.length) return task.checklist;
+  if (Array.isArray(bank?.checklist) && bank.checklist.length) return bank.checklist;
+  if (task.roleId === BRAND_ROLE_ID || task.roleName === BRAND_ROLE_NAME) {
+    return [
+      { title: "Revisar intención", detail: "Define qué debía lograr esta pieza o revisión: vender, aclarar marca, validar prenda, corregir texto o preparar campaña." },
+      { title: "Registrar datos usados", detail: "Escribe frases, productos, páginas, campañas o piezas revisadas. Sin dato registrado, la tarea queda como opinión." },
+      { title: "Evaluar coherencia", detail: "Compara el resultado contra cocina/servicio, tono, promesa, estilo visual y riesgo de parecer genérico." },
+      { title: "Definir corrección", detail: "Anota qué se aprueba, qué se corrige y qué no debe repetirse." }
+    ];
+  }
+  if (task.roleId === STRATEGIC_ROLE_ID || task.roleName === STRATEGIC_ROLE_NAME) {
+    return [
+      { title: "Levantar datos", detail: "Revisa ventas, tareas, inversión, marketing, Shopify, operación o decisiones según el enfoque de la tarea." },
+      { title: "Detectar señal principal", detail: "Identifica el dato o patrón más importante. No escribas sensaciones sin evidencia." },
+      { title: "Definir acción correctiva", detail: "Convierte la lectura en una acción concreta: corregir, medir, impulsar, pausar, registrar o priorizar." },
+      { title: "Guardar evidencia", detail: "Registra conclusión, dato revisado y decisión para que el cierre semanal pueda leerlo." }
+    ];
+  }
+  return [
+    { title: "Entender la tarea", detail: "Lee el objetivo y define qué resultado concreto debe existir al terminar." },
+    { title: "Ejecutar acción principal", detail: "Realiza el trabajo indicado y guarda evidencia útil." },
+    { title: "Cerrar con nota", detail: "Escribe resultado, obstáculo o siguiente paso." }
+  ];
+}
+
+function taskDataFields(task = {}, bank = null) {
+  if (Array.isArray(task.dataFields) && task.dataFields.length) return task.dataFields;
+  if (Array.isArray(bank?.dataFields) && bank.dataFields.length) return bank.dataFields;
+  if (task.roleId === BRAND_ROLE_ID || task.roleName === BRAND_ROLE_NAME) return ["Pieza/diseño revisado", "Frases usadas", "Riesgo de coherencia", "Corrección"];
+  if (task.roleId === STRATEGIC_ROLE_ID || task.roleName === STRATEGIC_ROLE_NAME) return ["Dato revisado", "Señal encontrada", "Riesgo", "Acción correctiva"];
+  return ["Resultado", "Evidencia", "Siguiente paso"];
+}
+
+function openTaskExecution(taskId) {
+  const task = (cache.profileWeeklyTasks || []).find(t => t.id === taskId);
+  if (!task) return;
+  const bank = getRoleBankTask(task);
+  const roleData = roleTaskStatusData(task);
+  const checklist = taskChecklistItems(task, bank);
+  const fields = taskDataFields(task, bank);
+  openInfoModal({
+    eyebrow: `Iniciar tarea · ${roleData.label}`,
+    title: task.title || "Tarea",
+    html: `<div class="task-execution-shell ${roleData.className}">
+      <div class="role-task-detail-hero ${roleData.className}">
+        <div><span class="eyebrow">Trabajo de hoy</span><strong>${dayLabel(task.assignedDay)}</strong><p>${taskMinutes(task)} min · intensidad ${intensityLabel(task.intensity)} · ${taskStatusLabel(task.status)}</p></div>
+        <div><span class="eyebrow">Criterio de cierre</span><strong>Con evidencia</strong><p>${escapeHtml(task.evidenceRequired || bank?.evidenceRequired || "Resultado verificable guardado.")}</p></div>
+      </div>
+      <details class="execution-block" open>
+        <summary>Checklist de preparación y ejecución</summary>
+        <div class="execution-steps">
+          ${checklist.map((item, index) => `<details class="execution-step"><summary><span class="step-number">${index + 1}</span><strong>${escapeHtml(item.title || item)}</strong></summary><p>${escapeHtml(item.detail || "Ejecuta este paso y registra evidencia si aplica.")}</p></details>`).join("")}
+        </div>
+      </details>
+      <details class="execution-block">
+        <summary>Datos que debes dejar listos</summary>
+        <div class="data-field-grid">
+          ${fields.map(field => `<div class="data-field-chip"><span>${escapeHtml(field)}</span></div>`).join("")}
+        </div>
+        <p class="muted">Por ahora estos campos son guía de ejecución. En el ecosistema futuro serán campos editables conectados al cierre semanal.</p>
+      </details>
+      <details class="execution-block">
+        <summary>Enfoque técnico de la tarea</summary>
+        <div class="learning-box"><span class="eyebrow">Objetivo</span><p>${escapeHtml(bank?.objective || task.description || "Completar la tarea con dirección y evidencia.")}</p></div>
+        <div class="learning-box"><span class="eyebrow">Impacto esperado</span><p>${escapeHtml(task.businessImpact || bank?.businessImpact || "Mejorar decisión, orden o avance real del negocio.")}</p></div>
+      </details>
+      <div class="modal-actions left-actions">
+        <button class="soft-btn" data-weekly-task-detail="${task.id}">Ver detalles completos</button>
+        <button class="primary-btn" data-toggle-weekly-task="${task.id}">${task.status === "completed" ? "Reabrir tarea" : "Marcar como completada"}</button>
+      </div>
+    </div>`
+  });
+  $$(`[data-weekly-task-detail]`).forEach(btn => btn.addEventListener("click", () => openWeeklyTaskDetail(btn.dataset.weeklyTaskDetail)));
+  $$(`[data-toggle-weekly-task]`).forEach(btn => btn.addEventListener("click", () => toggleWeeklyTask(btn.dataset.toggleWeeklyTask)));
+}
+
 function openWeeklyTaskDetail(taskId) {
   const task = (cache.profileWeeklyTasks || []).find(t => t.id === taskId);
   if (!task) return;
@@ -3150,7 +3250,7 @@ function openWeeklyTaskDetail(taskId) {
         <div class="learning-box"><span class="eyebrow">Objetivo</span><p>${escapeHtml(bank?.objective || task.description || "Completar esta tarea con evidencia clara para que el sistema pueda medir avance.")}</p></div>
         <div class="learning-box"><span class="eyebrow">Impacto esperado</span><p>${escapeHtml(task.businessImpact || bank?.businessImpact || "Ayuda a mantener el negocio alineado y evitar trabajo sin dirección.")}</p></div>
         <div class="learning-box"><span class="eyebrow">Evidencia requerida</span><p>${escapeHtml(task.evidenceRequired || bank?.evidenceRequired || "Resultado, link, decisión o nota de cierre.")}</p></div>
-        <div class="learning-box"><span class="eyebrow">Ecosistema futuro</span><p>Más adelante esta tarea abrirá una pantalla completa con pasos, guía, campos, evidencia, impacto y checklist interno. Por ahora esta ficha deja visible la lógica del rol.</p></div>
+        <div class="learning-box"><span class="eyebrow">Ecosistema futuro</span><p>Usa “Iniciar tarea” para abrir el checklist de ejecución, pasos accionables, datos requeridos y criterio de cierre.</p></div>
         ${brandTaskExtraDetail(task, bank)}
       </div>
       ${task.notes ? `<h3>Notas guardadas</h3><pre class="task-note-preview">${escapeHtml(task.notes)}</pre>` : ""}
@@ -3229,6 +3329,7 @@ async function editProfile(id) {
       data.subRoles = normalizeSubRoleSelection(data.subRoles, data.primaryRole, id);
       await updateDoc(workspaceDoc("profiles", id), { ...data, updatedAt: serverTimestamp() });
       await logActivity("edit_profile", "profiles", `Actualizó perfil de equipo: ${data.name || profile.name}`);
+      setTimeout(() => autoEnsureRoleTasksForProfile(id), 700);
     }
   });
 }
