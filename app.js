@@ -1115,13 +1115,52 @@ function implementedRoleOptions() {
   return uniqueClean(values);
 }
 
-function profileFieldSchema() {
+function splitRoleList(value = "") {
+  return String(value || "").split(",").map(x => x.trim()).filter(Boolean);
+}
+
+function roleTakenByOtherProfiles(roleName = "", currentProfileId = "") {
+  const key = normalizeRoleText(roleName);
+  if (!key || /^(pendiente|sin asignar)$/i.test(String(roleName))) return false;
+  return (cache.profiles || []).some(profile => {
+    if (String(profile.id || "") === String(currentProfileId || "")) return false;
+    const primaryKey = normalizeRoleText(profile.primaryRole || "");
+    if (primaryKey === key) return true;
+    return splitRoleList(profile.subRoles).some(role => normalizeRoleText(role) === key);
+  });
+}
+
+function availablePrimaryRoleOptions(currentProfile = {}) {
+  const currentPrimary = String(currentProfile.primaryRole || "").trim();
+  const values = implementedRoleOptions().filter(role => {
+    if (/^(pendiente|sin asignar)$/i.test(String(role))) return true;
+    if (normalizeRoleText(role) === normalizeRoleText(currentPrimary)) return true;
+    return !roleTakenByOtherProfiles(role, currentProfile.id);
+  });
+  return uniqueClean(values);
+}
+
+function availableSubRoleOptions(currentProfile = {}) {
+  const currentPrimaryKey = normalizeRoleText(currentProfile.primaryRole || "");
+  const currentSubs = splitRoleList(currentProfile.subRoles);
+  const currentSubKeys = new Set(currentSubs.map(normalizeRoleText));
+  const values = implementedRoleOptions().filter(role => {
+    const roleKey = normalizeRoleText(role);
+    if (!roleKey || /^(pendiente|sin asignar)$/i.test(String(role))) return false;
+    if (roleKey === currentPrimaryKey) return false;
+    if (currentSubKeys.has(roleKey)) return true;
+    return !roleTakenByOtherProfiles(role, currentProfile.id);
+  });
+  return uniqueClean(values);
+}
+
+function profileFieldSchema(currentProfile = {}) {
   return [
     {name:"name", label:"Nombre del perfil", required:true, placeholder:"Christopher / Adrián"},
     {name:"email", label:"Correo del usuario", type:"email", placeholder:"correo@the86club.com"},
     {name:"avatarUrl", label:"Foto o avatar opcional", type:"url", placeholder:"Link de imagen en Drive o recurso público"},
-    {name:"primaryRole", label:"Rol principal", type:"select", required:true, options:implementedRoleOptions},
-    {name:"subRoles", label:"Subroles funcionales", type:"checkboxGroup", options:implementedRoleOptions, helper:"Marca los roles de apoyo disponibles. Solo aparecen roles ya integrados o roles que ya existen en perfiles/colección de roles."},
+    {name:"primaryRole", label:"Rol principal", type:"select", required:true, options:() => availablePrimaryRoleOptions(currentProfile), helper:"Solo aparecen roles libres o el rol que ya tiene este perfil. Cada rol debe quedar en una sola persona."},
+    {name:"subRoles", label:"Subroles funcionales", type:"checkboxGroup", options:() => availableSubRoleOptions(currentProfile), helper:"Marca roles de apoyo libres. Si otro perfil ya tiene un rol como principal o subrol, no aparecerá aquí."},
     {name:"weeklyLoadStatus", label:"Estado de carga semanal", type:"select", options:["Sin evaluar","Verde — ritmo sano","Amarillo — atención","Rojo — exceso o desequilibrio"]},
     {name:"notes", label:"Notas, límites y contexto del perfil", type:"textarea", placeholder:"Responsabilidades, límites, acuerdos o riesgos de saturación. Este campo lo escribe el usuario; luego el sistema lo usará para interpretar carga y planificación."}
   ];
@@ -2322,6 +2361,18 @@ function ensureModalRoot() {
   return root;
 }
 
+function syncProfileRoleModalFilters(form) {
+  const primarySelect = form?.elements?.primaryRole;
+  if (!primarySelect) return;
+  const primaryKey = normalizeRoleText(primarySelect.value);
+  form.querySelectorAll(`.checkbox-option input[name="subRoles"]`).forEach(input => {
+    const option = input.closest(".checkbox-option");
+    const isSameAsPrimary = normalizeRoleText(input.value) === primaryKey;
+    if (option) option.hidden = isSameAsPrimary;
+    if (isSameAsPrimary) input.checked = false;
+  });
+}
+
 function openRecordModal({ title, collectionName, schema, initial = {}, onSave }) {
   return new Promise((resolve) => {
     const root = ensureModalRoot();
@@ -2358,6 +2409,8 @@ function openRecordModal({ title, collectionName, schema, initial = {}, onSave }
       if (val === undefined || val === null || val === "") val = defaultForField(f);
       el.value = val;
     });
+    syncProfileRoleModalFilters(form);
+    form.elements.primaryRole?.addEventListener("change", () => syncProfileRoleModalFilters(form));
     root.querySelectorAll("[data-modal-close]").forEach(btn => btn.addEventListener("click", () => { closeModal(); resolve(null); }));
     root.querySelector(".modal-backdrop").addEventListener("click", (e) => { if (e.target.classList.contains("modal-backdrop")) { closeModal(); resolve(null); } });
     form.addEventListener("submit", async (e) => {
@@ -2430,7 +2483,7 @@ function fieldInputHtml(f) {
   if (f.type === "checkboxGroup") {
     const opts = (typeof f.options === "function" ? f.options() : (f.options || [])).filter(o => !/^(Pendiente|Sin asignar)$/i.test(String(o)));
     const helper = f.helper ? `<p class="field-helper">${escapeHtml(f.helper)}</p>` : "";
-    return `<label class="field full checkbox-field">${labelBlock}<div class="field-input-box"><details class="checkbox-dropdown" open><summary>Seleccionar subroles disponibles</summary><div class="checkbox-options">${opts.map(o=>`<label class="checkbox-option"><input type="checkbox" name="${f.name}" value="${escapeAttr(o)}" /><span>${escapeHtml(o)}</span></label>`).join("")}</div></details>${helper}</div></label>`;
+    return `<div class="field full checkbox-field">${labelBlock}<div class="field-input-box"><details class="checkbox-dropdown" open><summary>Seleccionar subroles disponibles</summary><div class="checkbox-options">${opts.map(o=>`<label class="checkbox-option"><input type="checkbox" name="${f.name}" value="${escapeAttr(o)}" /><span class="checkbox-label-text">${escapeHtml(o)}</span></label>`).join("")}</div></details>${helper}</div></div>`;
   }
   return `<label class="field">${labelBlock}<div class="field-input-box"><input name="${f.name}" type="${f.type || "text"}" ${placeholder} ${required}/></div></label>`;
 }
@@ -2943,20 +2996,29 @@ function openWeeklyTaskDetail(taskId) {
   });
 }
 
-function normalizeSubRoleSelection(subRoles = "", primaryRole = "") {
+function normalizeSubRoleSelection(subRoles = "", primaryRole = "", currentProfileId = "") {
   const primaryKey = normalizeRoleText(primaryRole);
-  return uniqueClean(String(subRoles || "").split(",").map(x => x.trim()).filter(Boolean))
+  return uniqueClean(splitRoleList(subRoles))
     .filter(role => normalizeRoleText(role) !== primaryKey && !/^(pendiente|sin asignar)$/i.test(role))
+    .filter(role => !roleTakenByOtherProfiles(role, currentProfileId))
     .join(", ");
+}
+
+function normalizePrimaryRoleSelection(primaryRole = "", currentProfileId = "") {
+  const role = String(primaryRole || "").trim();
+  if (!role || /^(pendiente|sin asignar)$/i.test(role)) return "Pendiente";
+  if (roleTakenByOtherProfiles(role, currentProfileId)) return "Pendiente";
+  return role;
 }
 
 async function addProfile() {
   await openRecordModal({
     title: "Agregar perfil de equipo",
     collectionName: "Perfil",
-    schema: profileFieldSchema(),
+    schema: profileFieldSchema({}),
     onSave: async (data) => {
-      data.subRoles = normalizeSubRoleSelection(data.subRoles, data.primaryRole);
+      data.primaryRole = normalizePrimaryRoleSelection(data.primaryRole, "");
+      data.subRoles = normalizeSubRoleSelection(data.subRoles, data.primaryRole, "");
       await addDoc(workspaceCol("profiles"), { ...data, createdBy: currentUser.email, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
       await logActivity("create_profile", "profiles", `Creó perfil de equipo: ${data.name}`);
     }
@@ -2969,8 +3031,12 @@ async function quickAssignRole(payload = "") {
   const roleName = roleParts.join(":").trim();
   const profile = (cache.profiles || []).find(x => x.id === profileId);
   if (!profile || !roleName) return;
+  if (roleTakenByOtherProfiles(roleName, profileId)) {
+    openInfoModal({ eyebrow: "Rol ocupado", title: `${roleName} ya está asignado`, html: `<p>Ese rol ya pertenece a otro perfil como rol principal o subrol. Para moverlo, primero libéralo en el otro perfil.</p>` });
+    return;
+  }
   const currentPrimary = String(profile.primaryRole || "").trim();
-  const currentSubs = String(profile.subRoles || "").split(",").map(x => x.trim()).filter(Boolean);
+  const currentSubs = splitRoleList(profile.subRoles);
   const alreadyPrimary = normalizeRoleText(currentPrimary) === normalizeRoleText(roleName);
   const alreadySub = currentSubs.some(x => normalizeRoleText(x) === normalizeRoleText(roleName));
   const patch = {};
@@ -2994,10 +3060,11 @@ async function editProfile(id) {
   await openRecordModal({
     title: `Editar perfil: ${profile.name || "equipo"}`,
     collectionName: "Perfil",
-    schema: profileFieldSchema(),
+    schema: profileFieldSchema(profile),
     initial: profile,
     onSave: async (data) => {
-      data.subRoles = normalizeSubRoleSelection(data.subRoles, data.primaryRole);
+      data.primaryRole = normalizePrimaryRoleSelection(data.primaryRole, id);
+      data.subRoles = normalizeSubRoleSelection(data.subRoles, data.primaryRole, id);
       await updateDoc(workspaceDoc("profiles", id), { ...data, updatedAt: serverTimestamp() });
       await logActivity("edit_profile", "profiles", `Actualizó perfil de equipo: ${data.name || profile.name}`);
     }
