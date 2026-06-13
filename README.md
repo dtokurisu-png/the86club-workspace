@@ -1,3 +1,3 @@
-# The86Club Workspace V4.9.14
+# The86Club Workspace V4.9.14.1
 
-Limpia tareas estratégicas obsoletas/genéricas y fuerza el banco técnico actual de Dirección estratégica.
+Hotfix: corrige error de inicialización del banco de tareas estratégicas.

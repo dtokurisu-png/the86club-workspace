@@ -1097,8 +1097,12 @@ const OBSOLETE_STRATEGIC_TASK_TITLES = [
   "chequeo rápido de dirección",
   "registrar decisión estratégica importante"
 ];
-const CURRENT_STRATEGIC_TASK_IDS = new Set(STRATEGIC_ROLE_TASK_BANK.map(t => t.id));
-const CURRENT_BRAND_TASK_IDS = new Set(BRAND_ROLE_TASK_BANK.map(t => t.id));
+function getCurrentStrategicTaskIds() {
+  return new Set(STRATEGIC_ROLE_TASK_BANK.map(t => t.id));
+}
+function getCurrentBrandTaskIds() {
+  return new Set(BRAND_ROLE_TASK_BANK.map(t => t.id));
+}
 const AUTO_ROLE_TASK_SYNCING = new Set();
 const OBSOLETE_ROLE_TASK_CLEANING = new Set();
 
@@ -1107,11 +1111,11 @@ function isObsoleteRoleTask(task = {}) {
   const title = String(task.title || "").toLowerCase().trim();
   if (task.roleId === STRATEGIC_ROLE_ID || task.roleName === STRATEGIC_ROLE_NAME) {
     if (OBSOLETE_STRATEGIC_TASK_IDS.has(taskId)) return true;
-    if (taskId && !CURRENT_STRATEGIC_TASK_IDS.has(taskId)) return true;
+    if (taskId && !getCurrentStrategicTaskIds().has(taskId)) return true;
     if (OBSOLETE_STRATEGIC_TASK_TITLES.some(t => title.includes(t))) return true;
   }
   if (task.roleId === BRAND_ROLE_ID || task.roleName === BRAND_ROLE_NAME) {
-    if (taskId && !CURRENT_BRAND_TASK_IDS.has(taskId)) return true;
+    if (taskId && !getCurrentBrandTaskIds().has(taskId)) return true;
   }
   return false;
 }
