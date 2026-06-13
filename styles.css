@@ -1737,3 +1737,32 @@ html:not([data-theme="dark"]) .field select{background:#ffffff;border-color:#c8c
   color: var(--muted);
   line-height: 1.5;
 }
+
+/* V4.9.3 profile role configuration access */
+.profile-quick-actions,
+.role-config-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+}
+.profile-quick-actions .primary-btn,
+.profile-quick-actions .soft-btn,
+.role-config-actions .primary-btn,
+.role-config-actions .soft-btn {
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .profile-quick-actions,
+  .role-config-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+  .profile-quick-actions .primary-btn,
+  .profile-quick-actions .soft-btn,
+  .role-config-actions .primary-btn,
+  .role-config-actions .soft-btn {
+    width: 100%;
+  }
+}

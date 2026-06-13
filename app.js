@@ -457,9 +457,12 @@ function profileOperationsGraphCard(profile) {
       <div>
         <span class="eyebrow">Configuración del perfil</span>
         <h4>${escapeHtml(profile.name || "Perfil")}</h4>
-        <p>Rol, disponibilidad, calendario y carga semanal comprimidos. Abre esta sección solo cuando necesites ajustar algo.</p>
+        <p>Rol, disponibilidad, calendario y carga semanal comprimidos. Usa configurar para cambiar rol principal, subroles o notas sin buscar botones escondidos.</p>
       </div>
-      <button class="soft-btn" data-toggle-profile-ops="${profile.id}">Abrir configuración</button>
+      <div class="profile-quick-actions">
+        <button class="primary-btn" data-edit-profile="${profile.id}">Configurar perfil</button>
+        <button class="soft-btn" data-toggle-profile-ops="${profile.id}">Abrir panel</button>
+      </div>
     </div>
     <div class="profile-bars-grid">
       <div class="profile-line metric-${rTone}"><span>ROL</span><div class="mini-metric-track"><i style="width:${roleWidth}%"></i></div><b>${rTone === "neutral" ? "S/D" : "OK"}</b></div>
@@ -1880,15 +1883,21 @@ function brandRoleSummary(profile) {
   const activeRoles = profileRoleLabels(profile);
   const roleTasks = getProfileWeeklyTasks(profile.id).filter(t => t.roleId === BRAND_ROLE_ID || t.roleName === BRAND_ROLE_NAME);
   if (!profileHasBrandRole(profile)) {
+    const current = activeRoles.length ? activeRoles.map(r => `<span>${escapeHtml(r)}</span>`).join("") : `<span>Sin rol asignado</span>`;
     return `<div class="role-connection muted-box role-visual-panel">
       <div class="role-visual-head">
-        <div><span class="eyebrow">Roles activos</span><h4>Sin Dirección de marca activa</h4><p>Asigna este rol para evaluar coherencia de marca, frases, prendas nuevas, promesa y riesgo de marca genérica.</p></div>
+        <div><span class="eyebrow">Roles activos</span><h4>Dirección de marca no activa</h4><p>Asigna este rol para evaluar coherencia de marca, frases, prendas nuevas, promesa y riesgo de marca genérica.</p></div>
         <span class="role-status-chip role-neutral">Pendiente</span>
       </div>
+      <div class="role-active-tags">${current}</div>
       <div class="role-mini-bars">
         <div><span>MAR</span><i style="width:0%"></i><b>0</b></div>
         <div><span>TAR</span><i style="width:0%"></i><b>0</b></div>
         <div><span>COH</span><i style="width:0%"></i><b>0</b></div>
+      </div>
+      <div class="small-actions role-config-actions">
+        <button class="soft-btn" data-edit-profile="${profile.id}">Configurar roles</button>
+        <button class="primary-btn" data-assign-role="${profile.id}:${BRAND_ROLE_NAME}">Asignar Dirección de marca</button>
       </div>
     </div>`;
   }
@@ -2074,15 +2083,21 @@ function strategicRoleSummary(profile) {
   const activeRoles = profileRoleLabels(profile);
   const roleTasks = getProfileWeeklyTasks(profile.id).filter(t => t.roleId === STRATEGIC_ROLE_ID || t.roleName === STRATEGIC_ROLE_NAME);
   if (!profileHasStrategicRole(profile)) {
+    const current = activeRoles.length ? activeRoles.map(r => `<span>${escapeHtml(r)}</span>`).join("") : `<span>Sin rol asignado</span>`;
     return `<div class="role-connection muted-box role-visual-panel">
       <div class="role-visual-head">
-        <div><span class="eyebrow">Roles activos</span><h4>Sin Dirección estratégica activa</h4><p>Asigna este rol en el perfil para que pueda generar tareas de dirección, prioridades y equilibrio.</p></div>
+        <div><span class="eyebrow">Roles activos</span><h4>Dirección estratégica no activa</h4><p>Este perfil puede tener otros roles, pero todavía no tiene el rol que genera tareas de dirección, prioridades y equilibrio.</p></div>
         <span class="role-status-chip role-neutral">Pendiente</span>
       </div>
+      <div class="role-active-tags">${current}</div>
       <div class="role-mini-bars">
-        <div><span>ROL</span><i style="width:0%"></i><b>0</b></div>
+        <div><span>ROL</span><i style="width:${activeRoles.length ? 100 : 0}%"></i><b>${activeRoles.length ? activeRoles.length : 0}</b></div>
         <div><span>TAR</span><i style="width:0%"></i><b>0</b></div>
         <div><span>CAL</span><i style="width:0%"></i><b>0</b></div>
+      </div>
+      <div class="small-actions role-config-actions">
+        <button class="soft-btn" data-edit-profile="${profile.id}">Configurar roles</button>
+        <button class="soft-btn" data-assign-role="${profile.id}:${STRATEGIC_ROLE_NAME}">Asignar Dirección estratégica</button>
       </div>
     </div>`;
   }
@@ -2838,6 +2853,7 @@ function renderProfiles() {
   $$(`[data-edit-profile]`).forEach(btn => btn.addEventListener("click", () => editProfile(btn.dataset.editProfile)));
   $$(`[data-edit-availability]`).forEach(btn => btn.addEventListener("click", () => editAvailability(btn.dataset.editAvailability)));
   $$(`[data-profile-info]`).forEach(btn => btn.addEventListener("click", () => openProfileImportance(btn.dataset.profileInfo)));
+  $$(`[data-assign-role]`).forEach(btn => btn.addEventListener("click", () => quickAssignRole(btn.dataset.assignRole)));
   $$(`[data-generate-strategic-tasks]`).forEach(btn => btn.addEventListener("click", () => generateStrategicTasks(btn.dataset.generateStrategicTasks)));
   $$(`[data-generate-brand-tasks]`).forEach(btn => btn.addEventListener("click", () => generateBrandTasks(btn.dataset.generateBrandTasks)));
   $$(`[data-weekly-task-detail]`).forEach(btn => btn.addEventListener("click", () => openWeeklyTaskDetail(btn.dataset.weeklyTaskDetail)));
@@ -2906,6 +2922,31 @@ async function addProfile() {
       await logActivity("create_profile", "profiles", `Creó perfil de equipo: ${data.name}`);
     }
   });
+}
+
+
+async function quickAssignRole(payload = "") {
+  const [profileId, ...roleParts] = String(payload).split(":");
+  const roleName = roleParts.join(":").trim();
+  const profile = (cache.profiles || []).find(x => x.id === profileId);
+  if (!profile || !roleName) return;
+  const currentPrimary = String(profile.primaryRole || "").trim();
+  const currentSubs = String(profile.subRoles || "").split(",").map(x => x.trim()).filter(Boolean);
+  const alreadyPrimary = normalizeRoleText(currentPrimary) === normalizeRoleText(roleName);
+  const alreadySub = currentSubs.some(x => normalizeRoleText(x) === normalizeRoleText(roleName));
+  const patch = {};
+  if (!currentPrimary || ["pendiente", "sin asignar"].includes(normalizeRoleText(currentPrimary))) {
+    patch.primaryRole = roleName;
+  } else if (!alreadyPrimary && !alreadySub) {
+    patch.subRoles = [...currentSubs, roleName].join(", ");
+  }
+  if (!Object.keys(patch).length) {
+    openInfoModal({ eyebrow: "Rol ya activo", title: `${roleName} ya está asignado`, html: `<p>Este perfil ya tiene ese rol como rol principal o subrol.</p>` });
+    return;
+  }
+  await updateDoc(workspaceDoc("profiles", profileId), { ...patch, updatedAt: serverTimestamp() });
+  await logActivity("assign_profile_role", "profiles", `Asignó ${roleName} a ${profile.name || "perfil"}`);
+  openInfoModal({ eyebrow: "Rol asignado", title: `${roleName} quedó activo`, html: `<p>Ya puedes generar tareas del rol desde el panel del perfil.</p>` });
 }
 
 async function editProfile(id) {
