@@ -901,11 +901,31 @@ function weeklyTaskHtml(task) {
 function setTheme(theme) {
   document.documentElement.dataset.theme = theme;
   localStorage.setItem("the86_theme", theme);
-  $("#themeToggle").textContent = theme === "dark" ? "Modo día" : "Modo noche";
+  const themeBtn = $("#themeToggle");
+  if (themeBtn) themeBtn.textContent = theme === "dark" ? "Modo día" : "Modo noche";
 }
 
-$("#themeToggle").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+const themeToggleBtn = $("#themeToggle");
+if (themeToggleBtn) themeToggleBtn.addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
 setTheme(localStorage.getItem("the86_theme") || "dark");
+
+const settingsToggleBtn = $("#settingsToggle");
+const settingsMenu = $("#settingsMenu");
+if (settingsToggleBtn && settingsMenu) {
+  settingsToggleBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const isHidden = settingsMenu.classList.contains("hidden");
+    settingsMenu.classList.toggle("hidden", !isHidden);
+    settingsToggleBtn.setAttribute("aria-expanded", isHidden ? "true" : "false");
+  });
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".sidebar-settings-wrap")) {
+      settingsMenu.classList.add("hidden");
+      settingsToggleBtn.setAttribute("aria-expanded", "false");
+    }
+  });
+}
+
 
 $("#loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -918,7 +938,8 @@ $("#loginForm").addEventListener("submit", async (e) => {
   }
 });
 
-$("#signOutBtn").addEventListener("click", () => signOut(auth));
+const signOutButton = $("#signOutBtn");
+if (signOutButton) signOutButton.addEventListener("click", () => signOut(auth));
 
 onAuthStateChanged(auth, async (user) => {
   try {
@@ -928,12 +949,14 @@ onAuthStateChanged(auth, async (user) => {
     if (!user) {
       $("#loginView").classList.remove("hidden");
       $("#workspaceView").classList.add("hidden");
-      $("#signOutBtn").classList.add("hidden");
+      const signOutButton = $("#signOutBtn");
+      if (signOutButton) signOutButton.classList.add("hidden");
       return;
     }
     $("#loginView").classList.add("hidden");
     $("#workspaceView").classList.remove("hidden");
-    $("#signOutBtn").classList.remove("hidden");
+    const signOutButtonLogged = $("#signOutBtn");
+    if (signOutButtonLogged) signOutButtonLogged.classList.remove("hidden");
     $("#userChip").textContent = user.email;
     await ensureWorkspaceSeed();
     await logActivity("login", "auth", `Inició sesión: ${user.email}`);
@@ -942,7 +965,8 @@ onAuthStateChanged(auth, async (user) => {
     console.error("Auth boot error", err);
     $("#loginView").classList.add("hidden");
     $("#workspaceView").classList.remove("hidden");
-    $("#signOutBtn").classList.remove("hidden");
+    const signOutButtonLogged = $("#signOutBtn");
+    if (signOutButtonLogged) signOutButtonLogged.classList.remove("hidden");
     $("#userChip").textContent = currentUser?.email || "Sesión detectada";
     $("#dashboard").innerHTML = `<div class="card"><span class="eyebrow">Error de arranque</span><h3>No se pudo cargar el workspace completo</h3><p>${escapeHtml(err?.message || err)}</p><p class="muted">Copia este mensaje y envíamelo si vuelve a pasar. El login no debería quedar bloqueado.</p></div>`;
     switchView("dashboard");
@@ -1031,10 +1055,22 @@ function subscribeAll() {
   unsubscribers.push(activityUnsub);
 }
 
-function initNavigation() {
-  $$(".nav-btn").forEach(btn => btn.addEventListener("click", () => switchView(btn.dataset.view)));
 
-  $$('[data-nav-group-toggle]').forEach(toggle => {
+function initSidebarWheelScroll() {
+  const rail = document.querySelector('.sidebar-nav-scroll');
+  if (!rail || rail.dataset.wheelScrollReady === 'true') return;
+  rail.dataset.wheelScrollReady = 'true';
+  rail.addEventListener('wheel', (event) => {
+    const before = rail.scrollTop;
+    rail.scrollTop += event.deltaY;
+    if (rail.scrollTop !== before) event.preventDefault();
+  }, { passive: false });
+}
+
+function initNavigation() {
+  initSidebarWheelScroll();
+  $$(".nav-btn").forEach(btn => btn.addEventListener("click", () => switchView(btn.dataset.view)));
+  $$("[data-nav-group-toggle]").forEach(toggle => {
     const groupId = toggle.dataset.navGroupToggle;
     const group = document.querySelector(`[data-nav-group="${groupId}"]`);
     const saved = localStorage.getItem(`the86_nav_group_${groupId}`);
@@ -1045,26 +1081,6 @@ function initNavigation() {
       setNavGroupCollapsed(group, !isCollapsed, true);
     });
   });
-
-  const settingsToggle = document.querySelector("#settingsToggle");
-  const settingsMenu = document.querySelector("#settingsMenu");
-  if (settingsToggle && settingsMenu) {
-    const closeSettings = () => {
-      settingsMenu.classList.add("hidden");
-      settingsToggle.setAttribute("aria-expanded", "false");
-    };
-    settingsToggle.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const isHidden = settingsMenu.classList.contains("hidden");
-      settingsMenu.classList.toggle("hidden", !isHidden);
-      settingsToggle.setAttribute("aria-expanded", isHidden ? "true" : "false");
-    });
-    settingsMenu.addEventListener("click", (event) => event.stopPropagation());
-    document.addEventListener("click", closeSettings);
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") closeSettings();
-    });
-  }
 }
 
 function setNavGroupCollapsed(group, collapsed, persist = false) {

@@ -9,7 +9,7 @@
 <body>
   <div id="appShell" class="shell">
     <aside class="sidebar">
-      <div class="sidebar-header">
+      <div class="sidebar-head">
         <div class="brand-block">
           <div class="brand-mark">86</div>
           <div>
@@ -17,10 +17,10 @@
             <p>Workspace</p>
           </div>
         </div>
-        <div class="sidebar-settings">
-          <button id="settingsToggle" class="settings-toggle" type="button" aria-label="Abrir settings" aria-expanded="false">☰</button>
-          <div id="settingsMenu" class="settings-menu hidden">
-            <span class="settings-kicker">Settings</span>
+        <div class="sidebar-settings-wrap">
+          <button id="settingsToggle" class="settings-menu-btn" type="button" aria-label="Abrir settings" aria-expanded="false">☰</button>
+          <div id="settingsMenu" class="settings-popover hidden">
+            <span class="settings-title">Settings</span>
             <button id="themeToggle" class="ghost-btn" type="button">Modo día</button>
             <button class="ghost-btn" type="button" disabled>Exportar datos · futuro</button>
             <button class="ghost-btn" type="button" disabled>Administración workspace · futuro</button>
@@ -28,7 +28,7 @@
           </div>
         </div>
       </div>
-      <div class="sidebar-scroll-container">
+      <div class="sidebar-nav-scroll">
       <nav class="nav nav-categorized" aria-label="Workspace sections">
         <section class="nav-group" data-nav-group="direction">
           <button class="nav-group-toggle" type="button" aria-expanded="true" data-nav-group-toggle="direction">
@@ -172,6 +172,6 @@
     </div>
   </template>
 
-  <script type="module" src="./app.js?v=500"></script>
+  <script type="module" src="./app.js?v=491"></script>
 </body>
 </html>
