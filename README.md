@@ -1,1 +1,1 @@
-The 86 Club Workspace V4.9.1 - Sidebar category scroll fix
+The 86 Club Workspace V4.9.2 - Connect brand direction role to profile calendar.

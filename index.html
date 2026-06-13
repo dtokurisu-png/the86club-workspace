@@ -9,26 +9,13 @@
 <body>
   <div id="appShell" class="shell">
     <aside class="sidebar">
-      <div class="sidebar-head">
-        <div class="brand-block">
-          <div class="brand-mark">86</div>
-          <div>
-            <h1>The 86 Club</h1>
-            <p>Workspace</p>
-          </div>
-        </div>
-        <div class="sidebar-settings-wrap">
-          <button id="settingsToggle" class="settings-menu-btn" type="button" aria-label="Abrir settings" aria-expanded="false">☰</button>
-          <div id="settingsMenu" class="settings-popover hidden">
-            <span class="settings-title">Settings</span>
-            <button id="themeToggle" class="ghost-btn" type="button">Modo día</button>
-            <button class="ghost-btn" type="button" disabled>Exportar datos · futuro</button>
-            <button class="ghost-btn" type="button" disabled>Administración workspace · futuro</button>
-            <button id="signOutBtn" class="ghost-btn danger hidden" type="button">Salir</button>
-          </div>
+      <div class="brand-block">
+        <div class="brand-mark">86</div>
+        <div>
+          <h1>The 86 Club</h1>
+          <p>Workspace</p>
         </div>
       </div>
-      <div class="sidebar-nav-scroll">
       <nav class="nav nav-categorized" aria-label="Workspace sections">
         <section class="nav-group" data-nav-group="direction">
           <button class="nav-group-toggle" type="button" aria-expanded="true" data-nav-group-toggle="direction">
@@ -118,6 +105,9 @@
           </div>
         </section>
       </nav>
+      <div class="sidebar-footer">
+        <button id="themeToggle" class="ghost-btn" type="button">Modo día</button>
+        <button id="signOutBtn" class="ghost-btn danger hidden" type="button">Salir</button>
       </div>
     </aside>
 
@@ -172,6 +162,6 @@
     </div>
   </template>
 
-  <script type="module" src="./app.js?v=491"></script>
+  <script type="module" src="./app.js?v=492"></script>
 </body>
 </html>

@@ -901,31 +901,11 @@ function weeklyTaskHtml(task) {
 function setTheme(theme) {
   document.documentElement.dataset.theme = theme;
   localStorage.setItem("the86_theme", theme);
-  const themeBtn = $("#themeToggle");
-  if (themeBtn) themeBtn.textContent = theme === "dark" ? "Modo día" : "Modo noche";
+  $("#themeToggle").textContent = theme === "dark" ? "Modo día" : "Modo noche";
 }
 
-const themeToggleBtn = $("#themeToggle");
-if (themeToggleBtn) themeToggleBtn.addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+$("#themeToggle").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
 setTheme(localStorage.getItem("the86_theme") || "dark");
-
-const settingsToggleBtn = $("#settingsToggle");
-const settingsMenu = $("#settingsMenu");
-if (settingsToggleBtn && settingsMenu) {
-  settingsToggleBtn.addEventListener("click", (event) => {
-    event.stopPropagation();
-    const isHidden = settingsMenu.classList.contains("hidden");
-    settingsMenu.classList.toggle("hidden", !isHidden);
-    settingsToggleBtn.setAttribute("aria-expanded", isHidden ? "true" : "false");
-  });
-  document.addEventListener("click", (event) => {
-    if (!event.target.closest(".sidebar-settings-wrap")) {
-      settingsMenu.classList.add("hidden");
-      settingsToggleBtn.setAttribute("aria-expanded", "false");
-    }
-  });
-}
-
 
 $("#loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -938,8 +918,7 @@ $("#loginForm").addEventListener("submit", async (e) => {
   }
 });
 
-const signOutButton = $("#signOutBtn");
-if (signOutButton) signOutButton.addEventListener("click", () => signOut(auth));
+$("#signOutBtn").addEventListener("click", () => signOut(auth));
 
 onAuthStateChanged(auth, async (user) => {
   try {
@@ -949,14 +928,12 @@ onAuthStateChanged(auth, async (user) => {
     if (!user) {
       $("#loginView").classList.remove("hidden");
       $("#workspaceView").classList.add("hidden");
-      const signOutButton = $("#signOutBtn");
-      if (signOutButton) signOutButton.classList.add("hidden");
+      $("#signOutBtn").classList.add("hidden");
       return;
     }
     $("#loginView").classList.add("hidden");
     $("#workspaceView").classList.remove("hidden");
-    const signOutButtonLogged = $("#signOutBtn");
-    if (signOutButtonLogged) signOutButtonLogged.classList.remove("hidden");
+    $("#signOutBtn").classList.remove("hidden");
     $("#userChip").textContent = user.email;
     await ensureWorkspaceSeed();
     await logActivity("login", "auth", `Inició sesión: ${user.email}`);
@@ -965,8 +942,7 @@ onAuthStateChanged(auth, async (user) => {
     console.error("Auth boot error", err);
     $("#loginView").classList.add("hidden");
     $("#workspaceView").classList.remove("hidden");
-    const signOutButtonLogged = $("#signOutBtn");
-    if (signOutButtonLogged) signOutButtonLogged.classList.remove("hidden");
+    $("#signOutBtn").classList.remove("hidden");
     $("#userChip").textContent = currentUser?.email || "Sesión detectada";
     $("#dashboard").innerHTML = `<div class="card"><span class="eyebrow">Error de arranque</span><h3>No se pudo cargar el workspace completo</h3><p>${escapeHtml(err?.message || err)}</p><p class="muted">Copia este mensaje y envíamelo si vuelve a pasar. El login no debería quedar bloqueado.</p></div>`;
     switchView("dashboard");
@@ -1055,20 +1031,7 @@ function subscribeAll() {
   unsubscribers.push(activityUnsub);
 }
 
-
-function initSidebarWheelScroll() {
-  const rail = document.querySelector('.sidebar-nav-scroll');
-  if (!rail || rail.dataset.wheelScrollReady === 'true') return;
-  rail.dataset.wheelScrollReady = 'true';
-  rail.addEventListener('wheel', (event) => {
-    const before = rail.scrollTop;
-    rail.scrollTop += event.deltaY;
-    if (rail.scrollTop !== before) event.preventDefault();
-  }, { passive: false });
-}
-
 function initNavigation() {
-  initSidebarWheelScroll();
   $$(".nav-btn").forEach(btn => btn.addEventListener("click", () => switchView(btn.dataset.view)));
   $$("[data-nav-group-toggle]").forEach(toggle => {
     const groupId = toggle.dataset.navGroupToggle;
@@ -1529,6 +1492,193 @@ const STRATEGIC_ROLE_TASK_BANK = [
   }
 ];
 
+
+
+const BRAND_ROLE_ID = "brand_direction";
+const BRAND_ROLE_NAME = "Dirección de marca";
+const BRAND_ROLE_TASK_BANK = [
+  {
+    id: "weekly_brand_coherence_evaluation",
+    title: "Evaluación semanal de coherencia de marca",
+    description: "Revisar los diseños nuevos, frases utilizadas, páginas/productos y mensajes activos para detectar si The 86 Club mantiene identidad, promesa y tono.",
+    objective: "Cerrar la semana con una lectura clara de si la marca se está fortaleciendo o diluyendo.",
+    estimatedMinutes: 60,
+    intensity: "medium",
+    frequency: "weekly",
+    taskType: "brand_coherence_audit",
+    businessImpact: "Evita que los diseños nuevos y textos de venta se conviertan en piezas bonitas pero genéricas o fuera de marca.",
+    activationTags: ["base", "weekly", "new_designs", "brand_audit"],
+    suggestedDayMoment: "preclose",
+    canUseLightDay: false,
+    canUseProtectedDay: false,
+    evidenceRequired: "Formulario de coherencia completado: diseños revisados, frases usadas, riesgos detectados y conclusión de marca.",
+    priorityBase: 110,
+    ecosystemTemplateId: "ecosystem_brand_weekly_coherence"
+  },
+  {
+    id: "define_weekly_brand_message",
+    title: "Definir mensaje central de la semana",
+    description: "Elegir el mensaje o ángulo de marca que guiará productos, posts, emails o campañas de la semana.",
+    objective: "Evitar piezas sueltas sin una idea común de marca.",
+    estimatedMinutes: 30,
+    intensity: "medium",
+    frequency: "weekly",
+    taskType: "brand_message",
+    businessImpact: "Hace que la comunicación de la semana se sienta intencional, no improvisada.",
+    activationTags: ["base", "content", "campaign"],
+    suggestedDayMoment: "start",
+    canUseLightDay: false,
+    canUseProtectedDay: false,
+    evidenceRequired: "Mensaje central escrito y ejemplos de dónde se aplicará.",
+    priorityBase: 85,
+    ecosystemTemplateId: "ecosystem_brand_weekly_message"
+  },
+  {
+    id: "validate_new_garments_brand_fit",
+    title: "Validar prendas nuevas contra perfil de marca",
+    description: "Evaluar hasta dos prendas/diseños nuevos usando frases, intención, estilo, colección y conexión con cocina/servicio.",
+    objective: "Comprobar que lo que se intentó crear coincide con lo que terminó saliendo.",
+    estimatedMinutes: 50,
+    intensity: "medium",
+    frequency: "weekly",
+    taskType: "garment_brand_fit",
+    businessImpact: "Reduce el riesgo de lanzar prendas que se ven bien pero no pertenecen al universo de The 86 Club.",
+    activationTags: ["new_designs", "design_excess", "product_review"],
+    suggestedDayMoment: "preclose",
+    canUseLightDay: false,
+    canUseProtectedDay: false,
+    evidenceRequired: "Diseño 1 y 2 revisados con frases usadas, estilo, promesa y riesgo de coherencia.",
+    priorityBase: 95,
+    ecosystemTemplateId: "ecosystem_brand_garment_fit"
+  },
+  {
+    id: "review_product_promise",
+    title: "Revisar promesa del producto",
+    description: "Comprobar que el producto comunica una razón clara de compra y no solo una gráfica sobre una camiseta.",
+    objective: "Conectar el producto con cultura, identidad, utilidad emocional y venta.",
+    estimatedMinutes: 30,
+    intensity: "medium",
+    frequency: "as_needed",
+    taskType: "product_promise",
+    businessImpact: "Mejora descripciones, páginas y campañas porque aclara qué está comprando realmente el cliente.",
+    activationTags: ["has_products", "product_review", "campaign"],
+    suggestedDayMoment: "middle",
+    canUseLightDay: false,
+    canUseProtectedDay: false,
+    evidenceRequired: "Promesa del producto y ajuste recomendado.",
+    priorityBase: 75,
+    ecosystemTemplateId: "ecosystem_brand_product_promise"
+  },
+  {
+    id: "review_key_text_tone",
+    title: "Revisar tono de textos clave",
+    description: "Revisar descripciones, captions, banners o emails para confirmar que suenan a The 86 Club.",
+    objective: "Evitar que la voz de marca cambie entre producto, tienda y contenido.",
+    estimatedMinutes: 35,
+    intensity: "medium",
+    frequency: "as_needed",
+    taskType: "tone_review",
+    businessImpact: "Mejora confianza y coherencia verbal en los puntos que el cliente sí lee.",
+    activationTags: ["content", "campaign", "shopify_change"],
+    suggestedDayMoment: "middle",
+    canUseLightDay: true,
+    canUseProtectedDay: false,
+    evidenceRequired: "Texto revisado, ajuste de tono y regla aprendida si aplica.",
+    priorityBase: 70,
+    ecosystemTemplateId: "ecosystem_brand_tone_review"
+  },
+  {
+    id: "prepare_campaign_message_guide",
+    title: "Preparar guía de mensaje para campaña",
+    description: "Definir ángulo, promesa, tono, palabras permitidas y límites antes de promocionar producto o drop.",
+    objective: "Evitar campañas que venden producto sin cultura ni razón de marca.",
+    estimatedMinutes: 45,
+    intensity: "medium",
+    frequency: "as_needed",
+    taskType: "campaign_message_guide",
+    businessImpact: "Aumenta claridad antes de marketing orgánico o pagado y reduce desperdicio de creatividad.",
+    activationTags: ["campaign", "has_ads", "promotion"],
+    suggestedDayMoment: "start",
+    canUseLightDay: false,
+    canUseProtectedDay: false,
+    evidenceRequired: "Guía breve de campaña: mensaje, tono, frase núcleo y límites.",
+    priorityBase: 80,
+    ecosystemTemplateId: "ecosystem_brand_campaign_guide"
+  },
+  {
+    id: "detect_brand_dilution",
+    title: "Detectar piezas que diluyen la marca",
+    description: "Buscar piezas, frases, productos o campañas que se sienten genéricas, contradictorias o lejos de cocina/servicio.",
+    objective: "Señalar dónde la marca pierde identidad antes de publicar o impulsar.",
+    estimatedMinutes: 30,
+    intensity: "medium",
+    frequency: "weekly",
+    taskType: "brand_dilution",
+    businessImpact: "Protege que The 86 Club no parezca una tienda POD aleatoria.",
+    activationTags: ["base", "new_designs", "content", "style_mix"],
+    suggestedDayMoment: "preclose",
+    canUseLightDay: false,
+    canUseProtectedDay: false,
+    evidenceRequired: "Lista de piezas en riesgo y motivo de dilución.",
+    priorityBase: 78,
+    ecosystemTemplateId: "ecosystem_brand_dilution"
+  },
+  {
+    id: "create_brand_rule",
+    title: "Crear regla de marca nueva",
+    description: "Convertir una decisión de marca en regla reutilizable: esto sí es The 86 Club / esto no es The 86 Club.",
+    objective: "Hacer que cada aprendizaje reduzca discusiones futuras.",
+    estimatedMinutes: 20,
+    intensity: "low",
+    frequency: "as_needed",
+    taskType: "brand_rule",
+    businessImpact: "Fortalece el sistema de marca y acelera revisiones futuras.",
+    activationTags: ["learning", "decision_made", "brand_audit"],
+    suggestedDayMoment: "preclose",
+    canUseLightDay: true,
+    canUseProtectedDay: false,
+    evidenceRequired: "Regla escrita y ejemplo de uso.",
+    priorityBase: 55,
+    ecosystemTemplateId: "ecosystem_brand_rule"
+  },
+  {
+    id: "quick_brand_coherence_check",
+    title: "Chequeo rápido de coherencia antes de publicar",
+    description: "Hacer una revisión corta de tono, promesa y encaje antes de publicar una pieza.",
+    objective: "Atrapar errores de coherencia sin abrir una revisión grande.",
+    estimatedMinutes: 10,
+    intensity: "low",
+    frequency: "as_needed",
+    taskType: "quick_check",
+    businessImpact: "Evita publicar algo que contradice el universo de marca.",
+    activationTags: ["content", "light_check", "campaign"],
+    suggestedDayMoment: "any",
+    canUseLightDay: true,
+    canUseProtectedDay: false,
+    evidenceRequired: "Aprobado / corregir / pausar con una nota breve.",
+    priorityBase: 45,
+    ecosystemTemplateId: "ecosystem_brand_quick_check"
+  },
+  {
+    id: "register_not_the86",
+    title: "Registrar ‘esto no es The 86 Club’",
+    description: "Guardar una idea, frase o estilo descartado porque no encaja con la marca.",
+    objective: "Construir límites claros para evitar repetir errores.",
+    estimatedMinutes: 15,
+    intensity: "low",
+    frequency: "as_needed",
+    taskType: "brand_boundary",
+    businessImpact: "Hace más fácil decidir rápido en futuros diseños o campañas.",
+    activationTags: ["learning", "discarded", "brand_audit"],
+    suggestedDayMoment: "any",
+    canUseLightDay: true,
+    canUseProtectedDay: false,
+    evidenceRequired: "Qué se descartó y por qué no pertenece a The 86 Club.",
+    priorityBase: 35,
+    ecosystemTemplateId: "ecosystem_brand_boundary"
+  }
+];
+
 function normalizeRoleText(value = "") {
   return String(value || "").trim().toLowerCase();
 }
@@ -1537,6 +1687,19 @@ function profileHasStrategicRole(profile = {}) {
   const primary = normalizeRoleText(profile.primaryRole);
   const subs = normalizeRoleText(profile.subRoles);
   return primary === normalizeRoleText(STRATEGIC_ROLE_NAME) || subs.includes(normalizeRoleText(STRATEGIC_ROLE_NAME));
+}
+
+
+function profileHasBrandRole(profile = {}) {
+  const primary = normalizeRoleText(profile.primaryRole);
+  const subs = normalizeRoleText(profile.subRoles);
+  return primary === normalizeRoleText(BRAND_ROLE_NAME) || subs.includes(normalizeRoleText(BRAND_ROLE_NAME));
+}
+
+function profileHasRoleName(profile = {}, roleName = "") {
+  const primary = normalizeRoleText(profile.primaryRole);
+  const subs = normalizeRoleText(profile.subRoles);
+  return primary === normalizeRoleText(roleName) || subs.includes(normalizeRoleText(roleName));
 }
 
 function profileRoleLabels(profile = {}) {
@@ -1569,6 +1732,11 @@ function workspaceSignals(profileId) {
     marketingLow: designishTasks >= 2 && marketingishTasks === 0,
     tasksPending: profileTasks.filter(t => t.status !== "completed").length,
     existingStrategic: profileTasks.filter(t => t.roleId === STRATEGIC_ROLE_ID || t.roleName === STRATEGIC_ROLE_NAME),
+    existingBrand: profileTasks.filter(t => t.roleId === BRAND_ROLE_ID || t.roleName === BRAND_ROLE_NAME),
+    hasProducts: (cache.products || []).length > 0,
+    hasPromotion: (cache.promotion || []).length > 0,
+    hasAudit: (cache.audit || []).length > 0,
+    hasDesignFiles: (cache.files || []).some(f => /design|mockup|arte|final|product/i.test(`${f.name || ""} ${f.category || ""} ${f.notes || ""}`)),
     saturatedDays: workload?.saturatedDays || 0,
     protectedWithTasks: workload?.protectedWithTasks || 0
   };
@@ -1605,6 +1773,222 @@ function selectStrategicTasksForProfile(profile) {
   return selected.slice(0, 4);
 }
 
+
+function scoreBrandTask(task, signals) {
+  let score = task.priorityBase || 50;
+  if (task.activationTags?.includes("base")) score += 25;
+  if ((signals.hasProducts || signals.hasDesignFiles || signals.designishTasks > 0) && (task.activationTags?.includes("new_designs") || task.activationTags?.includes("product_review"))) score += 35;
+  if ((signals.hasPromotion || signals.hasAds) && (task.activationTags?.includes("campaign") || task.activationTags?.includes("promotion") || task.activationTags?.includes("has_ads"))) score += 30;
+  if (signals.hasAudit && task.activationTags?.includes("shopify_change")) score += 20;
+  if (signals.marketingLow && task.activationTags?.includes("design_excess")) score += 25;
+  if (signals.existingBrand?.length === 0 && task.id === "weekly_brand_coherence_evaluation") score += 45;
+  if (signals.existingBrand?.length === 0 && task.id === "define_weekly_brand_message") score += 20;
+  if (signals.saturatedDays || signals.protectedWithTasks) {
+    if (task.intensity === "low" || task.canUseLightDay) score += 5;
+    else score -= 12;
+  }
+  return score;
+}
+
+function selectBrandTasksForProfile(profile) {
+  const signals = workspaceSignals(profile.id);
+  const existingIds = new Set((signals.existingBrand || []).map(t => t.roleTaskId || t.brandTaskId).filter(Boolean));
+  const candidates = BRAND_ROLE_TASK_BANK
+    .filter(t => !existingIds.has(t.id))
+    .map(t => ({ ...t, score: scoreBrandTask(t, signals) }))
+    .sort((a, b) => b.score - a.score);
+  const core = candidates.find(t => t.id === "weekly_brand_coherence_evaluation");
+  let selected = core ? [core] : [];
+  const main = candidates
+    .filter(t => t.id !== "weekly_brand_coherence_evaluation" && t.intensity !== "low" && t.taskType !== "quick_check" && t.taskType !== "brand_boundary")
+    .slice(0, 2);
+  selected = [...selected, ...main].slice(0, 3);
+  if (selected.length < 3 && signals.hasPromotion) {
+    const light = candidates.find(t => !selected.some(s => s.id === t.id) && t.id === "quick_brand_coherence_check");
+    if (light) selected.push(light);
+  }
+  return selected.slice(0, 4);
+}
+
+function getBrandBankTask(task = {}) {
+  const taskId = task.roleTaskId || task.brandTaskId || task.id;
+  return BRAND_ROLE_TASK_BANK.find(t => t.id === taskId) || null;
+}
+
+function getRoleBankTask(task = {}) {
+  if (task.roleId === BRAND_ROLE_ID || task.roleName === BRAND_ROLE_NAME) return getBrandBankTask(task);
+  if (task.roleId === STRATEGIC_ROLE_ID || task.roleName === STRATEGIC_ROLE_NAME) return getStrategicBankTask(task);
+  return null;
+}
+
+function findBrandTaskDay(profile, task, currentTasks, alreadyPlanned = []) {
+  const availability = normalizeAvailability(profile.availability);
+  const preferredOrder = WEEK_DAYS.map(d => d.key);
+  const closeIdx = preferredOrder.indexOf(availability.weeklyCloseDay);
+  const startOrder = [...preferredOrder.slice(0, closeIdx >= 0 ? closeIdx : preferredOrder.length), ...preferredOrder.slice(closeIdx >= 0 ? closeIdx : preferredOrder.length)];
+  const precloseOrder = closeIdx > 0 ? [preferredOrder[closeIdx - 1], availability.weeklyCloseDay, ...preferredOrder.filter((_, i) => i !== closeIdx - 1 && i !== closeIdx)] : [availability.weeklyCloseDay, ...preferredOrder.filter(k => k !== availability.weeklyCloseDay)];
+  let order = task.suggestedDayMoment === "preclose" ? precloseOrder : task.suggestedDayMoment === "middle" ? ["wednesday", "thursday", "tuesday", "friday", "monday", "saturday", "sunday"] : startOrder;
+  const scored = order.map(key => {
+    const mode = availability.days[key]?.mode || "external_plus_business";
+    let score = 0;
+    if (mode === "business_available") score += 100;
+    if (mode === "external_plus_business") score += 70;
+    if (mode === "light" && task.canUseLightDay) score += 65;
+    if (mode === "light" && !task.canUseLightDay) score += 15;
+    if (mode === "external_only") score -= 45;
+    if (mode === "protected") score -= task.canUseProtectedDay ? 20 : 125;
+    if (alreadyPlanned.some(t => t.assignedDay === key && t.roleId === BRAND_ROLE_ID)) score += 45;
+    const projected = dayProjectedPercent(profile, key, currentTasks, [...alreadyPlanned.filter(t => t.assignedDay === key), task]);
+    if (projected <= 45) score += 30;
+    else if (projected <= 70) score += 15;
+    else if (projected <= 90) score -= 15;
+    else score -= 60;
+    return { key, score, projected, mode };
+  }).sort((a,b) => b.score - a.score);
+  return scored[0] || { key: "monday", projected: 0, mode: "business_available" };
+}
+
+function buildBrandWeeklyTask(profile, task, assignedDay) {
+  const notes = task.id === "weekly_brand_coherence_evaluation"
+    ? `Objetivo: ${task.objective}\nEvidencia requerida: ${task.evidenceRequired}\n\nGuion previsto:\n- Diseño 1: nombre, colección/drop, frases utilizadas separadas por coma, estilo visual, intención y riesgo de coherencia.\n- Diseño 2: nombre, colección/drop, frases utilizadas separadas por coma, estilo visual, intención y riesgo de coherencia.\n- Página/producto/campaña: mensaje principal, promesa, confianza visual y coherencia con cocina/servicio.\n- Resultado: coherente / riesgo medio / fuera de marca y motivo.`
+    : `Objetivo: ${task.objective}\nEvidencia requerida: ${task.evidenceRequired}`;
+  return {
+    profileId: profile.id,
+    title: task.title,
+    description: task.description,
+    assignedDay,
+    estimatedMinutes: task.estimatedMinutes,
+    intensity: task.intensity,
+    status: "pending",
+    notes,
+    source: "role",
+    roleId: BRAND_ROLE_ID,
+    roleName: BRAND_ROLE_NAME,
+    roleTaskId: task.id,
+    brandTaskId: task.id,
+    taskType: task.taskType,
+    businessImpact: task.businessImpact,
+    activationConditions: (task.activationTags || []).join(", "),
+    evidenceRequired: task.evidenceRequired,
+    taskEcosystemEnabled: true,
+    ecosystemTemplateId: task.ecosystemTemplateId,
+    createdBy: currentUser?.email || "system"
+  };
+}
+
+function brandRoleSummary(profile) {
+  const activeRoles = profileRoleLabels(profile);
+  const roleTasks = getProfileWeeklyTasks(profile.id).filter(t => t.roleId === BRAND_ROLE_ID || t.roleName === BRAND_ROLE_NAME);
+  if (!profileHasBrandRole(profile)) {
+    return `<div class="role-connection muted-box role-visual-panel">
+      <div class="role-visual-head">
+        <div><span class="eyebrow">Roles activos</span><h4>Sin Dirección de marca activa</h4><p>Asigna este rol para evaluar coherencia de marca, frases, prendas nuevas, promesa y riesgo de marca genérica.</p></div>
+        <span class="role-status-chip role-neutral">Pendiente</span>
+      </div>
+      <div class="role-mini-bars">
+        <div><span>MAR</span><i style="width:0%"></i><b>0</b></div>
+        <div><span>TAR</span><i style="width:0%"></i><b>0</b></div>
+        <div><span>COH</span><i style="width:0%"></i><b>0</b></div>
+      </div>
+    </div>`;
+  }
+  const pending = roleTasks.filter(t => t.status !== "completed").length;
+  const completed = roleTasks.filter(t => t.status === "completed").length;
+  const dayMap = roleTasks.reduce((acc, t) => { acc[t.assignedDay] = (acc[t.assignedDay] || 0) + 1; return acc; }, {});
+  const busiest = Object.entries(dayMap).sort((a,b) => b[1]-a[1])[0];
+  const totalWeighted = roleTasks.reduce((sum, t) => sum + weightedTaskMinutes(t), 0);
+  const totalMinutes = roleTasks.reduce((sum, t) => sum + taskMinutes(t), 0);
+  const completionPercent = roleTasks.length ? Math.round((completed / roleTasks.length) * 100) : 0;
+  const taskPercent = Math.min(100, roleTasks.length * 34);
+  const calendarPercent = busiest ? Math.min(100, busiest[1] * 42) : 0;
+  const reviewCount = roleTasks.filter(t => /coherencia|marca|prenda|tono|promesa/i.test(t.title || "")).length;
+  const reviewPercent = Math.min(100, reviewCount * 35);
+  const taskBarState = pending >= 4 ? "state-red" : pending >= 3 ? "state-orange" : pending >= 2 ? "state-yellow" : roleTasks.length ? "state-green" : "state-neutral";
+  const calendarState = busiest && busiest[1] >= 4 ? "state-red" : busiest && busiest[1] >= 3 ? "state-orange" : busiest ? "state-green" : "state-neutral";
+  return `<div class="role-connection active-role-connection role-visual-panel brand-role-panel">
+    <div class="role-visual-head">
+      <div><span class="eyebrow">Rol activo</span><h4>Dirección de marca</h4><p>Este panel muestra cómo el rol cuida coherencia, prendas nuevas, frases, tono y promesa de The 86 Club.</p></div>
+      <span class="role-status-chip role-brand">Conectado</span>
+    </div>
+    <div class="role-active-tags">
+      ${activeRoles.map(r => `<span>${escapeHtml(r)}</span>`).join("")}
+    </div>
+    <div class="role-mini-bars">
+      <div class="${roleTasks.length ? "state-green" : "state-neutral"}"><span>MAR</span><i style="width:${roleTasks.length ? 100 : 0}%"></i><b>${roleTasks.length ? "Activo" : "0"}</b></div>
+      <div class="${taskBarState}"><span>TAR</span><i style="width:${taskPercent}%"></i><b>${roleTasks.length}</b></div>
+      <div class="${calendarState}"><span>DÍA</span><i style="width:${calendarPercent}%"></i><b>${busiest ? dayLabel(busiest[0]).slice(0,3) : "—"}</b></div>
+      <div class="${reviewPercent >= 70 ? "state-green" : reviewPercent >= 35 ? "state-yellow" : roleTasks.length ? "state-orange" : "state-neutral"}"><span>COH</span><i style="width:${reviewPercent}%"></i><b>${reviewCount}</b></div>
+    </div>
+    <div class="role-connection-stats"><span>${roleTasks.length} tareas</span><span>${completed} hechas</span><span>${pending} pendientes</span><span>${totalMinutes} min</span><span>${totalWeighted} min pond.</span></div>
+    ${roleTasks.length ? `<div class="role-task-preview">${roleTasks.slice(0,3).map(t => `<button type="button" data-weekly-task-detail="${t.id}"><strong>${escapeHtml(t.title)}</strong><small>${dayLabel(t.assignedDay)} · ${intensityLabel(t.intensity)}</small></button>`).join("")}</div>` : `<div class="calendar-suggestion">Todavía no hay tareas de marca generadas. Usa el botón para crear evaluación de coherencia y tareas necesarias según contexto.</div>`}
+    <button class="primary-btn" data-generate-brand-tasks="${profile.id}">Generar tareas de marca</button>
+  </div>`;
+}
+
+async function generateBrandTasks(profileId) {
+  const profile = (cache.profiles || []).find(p => p.id === profileId);
+  if (!profile) return;
+  if (!profileHasBrandRole(profile)) {
+    openInfoModal({ eyebrow: "Rol no asignado", title: "Dirección de marca no está activa", html: `<p>Primero asigna este rol como rol principal o subrol en el perfil. Después el sistema podrá generar tareas de coherencia de marca para la semana.</p>` });
+    return;
+  }
+  const currentTasks = getProfileWeeklyTasks(profile.id);
+  const selected = selectBrandTasksForProfile(profile);
+  if (!selected.length) {
+    await logActivity("skip_role_tasks", "profileWeeklyTasks", `No generó tareas de marca para ${profile.name || "perfil"}: ya existen o no hay selección necesaria.`);
+    openInfoModal({ eyebrow: "Sin nuevas tareas", title: "No hay tareas de marca nuevas", html: `<p>Este perfil ya tiene las tareas base de Dirección de marca o no hay suficiente señal para agregar más sin generar revisión innecesaria.</p>` });
+    return;
+  }
+  const planned = [];
+  selected.forEach(task => {
+    const best = findBrandTaskDay(profile, task, currentTasks, planned);
+    planned.push(buildBrandWeeklyTask(profile, task, best.key));
+  });
+  const redDays = new Set();
+  planned.forEach(t => {
+    const projected = dayProjectedPercent(profile, t.assignedDay, currentTasks, planned.filter(x => x.assignedDay === t.assignedDay));
+    if (projected >= 91) redDays.add(t.assignedDay);
+  });
+  const root = ensureModalRoot();
+  root.innerHTML = `<div class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="record-modal wide-modal">
+      <div class="modal-header">
+        <div><span class="eyebrow">Generar tareas del rol</span><h2>Dirección de marca para ${escapeHtml(profile.name || "perfil")}</h2></div>
+        <button class="icon-btn" data-modal-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="learning-box modal-learning"><span class="eyebrow">Regla de marca</span><p>El sistema intenta crear una evaluación semanal de coherencia y solo agregar tareas necesarias. No debe convertir branding en perfeccionismo ni frenar producción sin motivo.</p></div>
+      <div class="learning-box modal-learning"><span class="eyebrow">Evaluación de prendas</span><p>La tarea central revisará hasta dos diseños nuevos: frases separadas por coma, estilo visual, intención, colección/drop, promesa y riesgo de perder coherencia de marca.</p></div>
+      ${redDays.size ? `<div class="calendar-suggestion warning-suggestion">Advertencia: la asignación podría dejar en rojo ${[...redDays].map(dayLabel).join(", ")}. Puedes guardar y luego mover tareas manualmente, o cancelar y ajustar disponibilidad.</div>` : `<div class="calendar-suggestion">La asignación queda dentro de una carga aceptable según la información disponible.</div>`}
+      <div class="role-task-table"><div class="role-task-row head"><span>Tarea</span><span>Día</span><span>Tiempo</span><span>Intensidad</span></div>
+        ${planned.map(t => `<div class="role-task-row"><div><strong>${escapeHtml(t.title)}</strong><p>${escapeHtml(t.businessImpact || "")}</p></div><span>${dayLabel(t.assignedDay)}</span><span>${t.estimatedMinutes} min</span><span>${intensityLabel(t.intensity)}</span></div>`).join("")}
+      </div>
+      <div class="modal-actions"><button type="button" class="soft-btn" data-modal-close>Cancelar</button><button type="button" class="primary-btn" id="confirmBrandTasks">Guardar tareas</button></div>
+    </div>
+  </div>`;
+  root.querySelectorAll("[data-modal-close]").forEach(btn => btn.addEventListener("click", closeModal));
+  root.querySelector("#confirmBrandTasks").addEventListener("click", async () => {
+    for (const task of planned) {
+      await addDoc(workspaceCol("profileWeeklyTasks"), { ...task, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    }
+    await logActivity("generate_role_tasks", "profileWeeklyTasks", `Generó ${planned.length} tareas de Dirección de marca para ${profile.name || "perfil"}`);
+    closeModal();
+  });
+}
+
+function brandTaskExtraDetail(task = {}, bank = null) {
+  if (!(task.roleId === BRAND_ROLE_ID || task.roleName === BRAND_ROLE_NAME)) return "";
+  const isCoherence = (bank?.id || task.brandTaskId || task.roleTaskId) === "weekly_brand_coherence_evaluation" || /coherencia/i.test(task.title || "");
+  return `<div class="learning-box brand-task-guide"><span class="eyebrow">Guion de marca previsto</span>
+    ${isCoherence ? `<p>Esta tarea debe recopilar datos concretos para que el sistema pueda detectar si la marca se fortalece o se diluye.</p>
+    <ul>
+      <li><strong>Diseño 1:</strong> nombre, colección/drop, frases utilizadas separadas por coma, estilo visual, intención y riesgo.</li>
+      <li><strong>Diseño 2:</strong> nombre, colección/drop, frases utilizadas separadas por coma, estilo visual, intención y riesgo.</li>
+      <li><strong>Página/producto/campaña:</strong> promesa, tono, confianza visual y conexión con cocina/servicio.</li>
+      <li><strong>Resultado:</strong> coherente, riesgo medio o fuera de marca, con motivo.</li>
+    </ul>` : `<p>Cuando esta tarea tenga su ecosistema completo, abrirá una pantalla grande con campos de marca, evidencia, criterios de coherencia y cierre guiado.</p>`}
+  </div>`;
+}
+
 function getStrategicBankTask(task = {}) {
   const taskId = task.roleTaskId || task.strategicTaskId || task.id;
   return STRATEGIC_ROLE_TASK_BANK.find(t => t.id === taskId) || null;
@@ -1615,6 +1999,9 @@ function roleTaskStatusData(task = {}) {
   if (!isRole) return { label: "Manual", className: "role-neutral" };
   if (task.roleId === STRATEGIC_ROLE_ID || task.roleName === STRATEGIC_ROLE_NAME) {
     return { label: "Dirección estratégica", className: "role-strategic" };
+  }
+  if (task.roleId === BRAND_ROLE_ID || task.roleName === BRAND_ROLE_NAME) {
+    return { label: "Dirección de marca", className: "role-brand" };
   }
   return { label: task.roleName || "Rol", className: "role-neutral" };
 }
@@ -2414,6 +2801,7 @@ function renderProfiles() {
           <div><span>Subroles</span><strong>${p.subRoles || "Pendientes"}</strong></div>
         </div>
         ${strategicRoleSummary(p)}
+        ${brandRoleSummary(p)}
         <div class="availability-summary">
           <div class="availability-head">
             <div><span class="eyebrow">Disponibilidad semanal</span><strong>Cierre: ${dayLabel(avStats.closeDay)}</strong></div>
@@ -2451,6 +2839,7 @@ function renderProfiles() {
   $$(`[data-edit-availability]`).forEach(btn => btn.addEventListener("click", () => editAvailability(btn.dataset.editAvailability)));
   $$(`[data-profile-info]`).forEach(btn => btn.addEventListener("click", () => openProfileImportance(btn.dataset.profileInfo)));
   $$(`[data-generate-strategic-tasks]`).forEach(btn => btn.addEventListener("click", () => generateStrategicTasks(btn.dataset.generateStrategicTasks)));
+  $$(`[data-generate-brand-tasks]`).forEach(btn => btn.addEventListener("click", () => generateBrandTasks(btn.dataset.generateBrandTasks)));
   $$(`[data-weekly-task-detail]`).forEach(btn => btn.addEventListener("click", () => openWeeklyTaskDetail(btn.dataset.weeklyTaskDetail)));
   $$(`[data-calendar-help]`).forEach(btn => btn.addEventListener("click", () => openCalendarHelp(btn.dataset.calendarHelp)));
   $$(`[data-workload-help]`).forEach(btn => btn.addEventListener("click", () => openWorkloadHelp(btn.dataset.workloadHelp)));
@@ -2485,7 +2874,7 @@ function dayLabel(key) {
 function openWeeklyTaskDetail(taskId) {
   const task = (cache.profileWeeklyTasks || []).find(t => t.id === taskId);
   if (!task) return;
-  const bank = getStrategicBankTask(task);
+  const bank = getRoleBankTask(task);
   const roleData = roleTaskStatusData(task);
   openInfoModal({
     eyebrow: roleData.label,
@@ -2500,6 +2889,7 @@ function openWeeklyTaskDetail(taskId) {
         <div class="learning-box"><span class="eyebrow">Impacto esperado</span><p>${escapeHtml(task.businessImpact || bank?.businessImpact || "Ayuda a mantener el negocio alineado y evitar trabajo sin dirección.")}</p></div>
         <div class="learning-box"><span class="eyebrow">Evidencia requerida</span><p>${escapeHtml(task.evidenceRequired || bank?.evidenceRequired || "Resultado, link, decisión o nota de cierre.")}</p></div>
         <div class="learning-box"><span class="eyebrow">Ecosistema futuro</span><p>Más adelante esta tarea abrirá una pantalla completa con pasos, guía, campos, evidencia, impacto y checklist interno. Por ahora esta ficha deja visible la lógica del rol.</p></div>
+        ${brandTaskExtraDetail(task, bank)}
       </div>
       ${task.notes ? `<h3>Notas guardadas</h3><pre class="task-note-preview">${escapeHtml(task.notes)}</pre>` : ""}
     `
@@ -2886,7 +3276,7 @@ function renderRoleLibraryCard(role) {
         <div><span>Responsabilidad</span><strong>${escapeHtml(role.coreResponsibility || "Pendiente de definir")}</strong></div>
         <div><span>Tareas</span><strong>${taskCount || "Banco pendiente"}</strong></div>
         <div><span>Límite</span><strong>${escapeHtml((role.recommendedLimits || ["Por definir"])[0])}</strong></div>
-        <div><span>Estado</span><strong>${role.id === STRATEGIC_DIRECTION_ROLE.id ? "Conectado" : "Ficha base"}</strong></div>
+        <div><span>Estado</span><strong>${[STRATEGIC_DIRECTION_ROLE.id, BRAND_DIRECTION_ROLE.id].includes(role.id) ? "Conectado" : "Ficha base"}</strong></div>
       </div>
       <div class="role-focus-box">
         <div><span class="eyebrow">Propósito</span><p>${escapeHtml(role.purpose || "Pendiente de definición estratégica.")}</p></div>
